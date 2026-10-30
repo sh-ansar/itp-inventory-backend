@@ -25,6 +25,16 @@ Use PHP 8.4 from C:\deploy\hrm\runtime\php-8.4.26-nts\php.exe, but do not change
 
 Optional local-only QA fixture: run php artisan db:seed --class=LocalDevelopmentSeeder. It generates a random synthetic-only login secret under gitignored storage/app/private, refuses to run on PostgreSQL or outside APP_ENV=local, and creates test users/assets only. Never publish the local secret.
 
+## Initial production administrator (interactive, no secrets in Git)
+
+Production does **not** seed synthetic users or copy HRM passwords. An operator who controls the server must run the following on the isolated Inventory backend, using its own PostgreSQL configuration:
+
+    php artisan inventory:bootstrap-admin --email=your-corporate-email@example.com --company="ITP Mining"
+
+The command prompts twice for a **new Inventory-only password**, with hidden input (12+ characters, uppercase/lowercase, number and symbol). It only permits the first company administrator, and will not overwrite an existing user/password. Never pass the password in CLI arguments, chat messages, or checked-in files.
+
+After creating the administrator and validating secure HTTPS session/CSRF isolation, set INVENTORY_BROWSER_LOGIN_ENABLED=true in the protected Inventory-only environment, reload the isolated Inventory FastCGI service and confirm POST /inventory-api/auth/login and logout on the public origin. No public registration is enabled.
+
 ## Deployment boundaries
 
 - New DB role, data directory, APP_KEY, isolated PHP workers, session cookie and XSRF name; no HRM/Portal secrets or shared DB.
