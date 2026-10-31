@@ -12,13 +12,14 @@ abstract class AssetDataRequest extends FormRequest
     public function authorize(): bool
     {
         app(CompanyAccess::class)->canWrite($this, $this->company());
+
         return true;
     }
 
     protected function prepareForValidation(): void
     {
         $fields = [];
-        foreach (['name','inventory_number','serial_number','description'] as $field) {
+        foreach (['name', 'inventory_number', 'serial_number', 'description'] as $field) {
             if ($this->has($field) && is_string($this->input($field))) {
                 $fields[$field] = trim($this->input($field));
             }
@@ -30,6 +31,7 @@ abstract class AssetDataRequest extends FormRequest
     {
         $company = $this->route('company');
         abort_unless($company instanceof Company, 404);
+
         return $company;
     }
 
@@ -38,20 +40,23 @@ abstract class AssetDataRequest extends FormRequest
         $company = $this->company();
         $unique = Rule::unique('assets', 'inventory_number')
             ->where('company_id', $company->id);
-        if ($ignoreId) $unique->ignore($ignoreId, 'id');
+        if ($ignoreId) {
+            $unique->ignore($ignoreId, 'id');
+        }
 
         return [
             'inventory_number' => ['required', 'string', 'min:1', 'max:100', $unique],
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'serial_number' => ['nullable', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:3000'],
-            'category_id' => ['nullable', 'uuid', Rule::exists('asset_categories','id')->where('company_id',$company->id)],
+            'category_id' => ['nullable', 'uuid', Rule::exists('asset_categories', 'id')->where('company_id', $company->id)],
+            'facility_node_id' => ['nullable', 'uuid', Rule::exists('facility_nodes', 'id')->where('company_id', $company->id)],
+            'responsible_person_id' => ['nullable', 'uuid', Rule::exists('responsible_people', 'id')
+                ->where('company_id', $company->id)->where('is_active', true)],
             'accounting_location_id' => ['nullable', 'uuid',
-                Rule::exists('asset_locations','id')->where(fn ($q) =>
-                    $q->where('company_id',$company->id)->where('kind','accounting'))],
+                Rule::exists('asset_locations', 'id')->where(fn ($q) => $q->where('company_id', $company->id)->where('kind', 'accounting'))],
             'physical_location_id' => ['nullable', 'uuid',
-                Rule::exists('asset_locations','id')->where(fn ($q) =>
-                    $q->where('company_id',$company->id)->where('kind','physical'))],
+                Rule::exists('asset_locations', 'id')->where(fn ($q) => $q->where('company_id', $company->id)->where('kind', 'physical'))],
         ];
     }
 }

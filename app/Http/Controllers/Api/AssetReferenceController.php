@@ -3,20 +3,27 @@
 namespace App\Http\Controllers\Api;
 
 use App\Domain\Inventory\CompanyAccess;
+use App\Domain\Inventory\EquipmentTypes;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 final class AssetReferenceController extends Controller
 {
     public function index(Request $request, Company $company, CompanyAccess $access): JsonResponse
     {
         $access->member($request, $company);
+
         return response()->json([
-            'categories' => $company->assetCategories()->orderBy('name')->get(['id', 'code', 'name']),
+            'categories' => $company->assetCategories()->orderBy('name')->get()->map(fn ($category) => [
+                ...$category->only(['id', 'code', 'name', 'icon_key', 'is_base', 'version']),
+                'icon_url' => $category->icon_path ? '/inventory-api/api/v1/companies/'.$company->id
+                    .'/categories/'.$category->id.'/icon' : null,
+            ]),
             'accounting_locations' => $company->assetLocations()->where('kind', 'accounting')->orderBy('name')->get(['id', 'code', 'name']),
             'physical_locations' => $company->assetLocations()->where('kind', 'physical')->orderBy('name')->get(['id', 'code', 'name']),
         ]);
@@ -29,11 +36,23 @@ final class AssetReferenceController extends Controller
             'code' => ['required', 'string', 'min:1', 'max:60',
                 Rule::unique('asset_categories', 'code')->where('company_id', $company->id)],
             'name' => ['required', 'string', 'min:2', 'max:200'],
+            'icon_key' => ['nullable', Rule::in(EquipmentTypes::ICONS)],
         ]);
+        $normalized = EquipmentTypes::normalize($data['name']);
+        if ($company->assetCategories()->where('normalized_name', $normalized)
+            ->orWhere(fn ($q) => $q->where('company_id', $company->id)
+                ->whereRaw('LOWER(name) = ?', [$normalized]))->exists()) {
+            throw ValidationException::withMessages([
+                'name' => ['This equipment type already exists in the company'],
+            ]);
+        }
         $category = $company->assetCategories()->create([
             ...$data, 'id' => (string) Str::uuid(),
+            'normalized_name' => $normalized, 'icon_key' => $data['icon_key'] ?? 'box',
+            'is_base' => false, 'version' => 1,
         ]);
-        return response()->json($category->only(['id','code','name']), 201);
+
+        return response()->json($category->only(['id', 'code', 'name', 'icon_key', 'is_base', 'version']), 201);
     }
 
     public function storeLocation(Request $request, Company $company, CompanyAccess $access): JsonResponse
@@ -51,6 +70,7 @@ final class AssetReferenceController extends Controller
         $location = $company->assetLocations()->create([
             ...$data, 'id' => (string) Str::uuid(),
         ]);
-        return response()->json($location->only(['id','kind','code','name']), 201);
+
+        return response()->json($location->only(['id', 'kind', 'code', 'name']), 201);
     }
 }

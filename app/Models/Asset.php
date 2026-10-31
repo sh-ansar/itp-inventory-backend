@@ -12,13 +12,14 @@ final class Asset extends Model
     use SoftDeletes;
 
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     // Tenant/identity/status/version must be set by application services, not request payloads.
     protected $fillable = [
         'id', 'public_id', 'inventory_number', 'name', 'serial_number',
         'description', 'category_id', 'accounting_location_id',
-        'physical_location_id', 'status',
+        'physical_location_id', 'facility_node_id', 'responsible_person_id', 'status',
     ];
 
     protected function casts(): array
@@ -29,10 +30,43 @@ final class Asset extends Model
         ];
     }
 
-    public function company(): BelongsTo { return $this->belongsTo(Company::class); }
-    public function category(): BelongsTo { return $this->belongsTo(AssetCategory::class, 'category_id'); }
-    public function accountingLocation(): BelongsTo { return $this->belongsTo(AssetLocation::class, 'accounting_location_id'); }
-    public function physicalLocation(): BelongsTo { return $this->belongsTo(AssetLocation::class, 'physical_location_id'); }
-    public function events(): HasMany { return $this->hasMany(AssetEvent::class); }
-    public function movements(): HasMany { return $this->hasMany(AssetMovement::class); }
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(AssetCategory::class, 'category_id');
+    }
+
+    public function accountingLocation(): BelongsTo
+    {
+        return $this->belongsTo(AssetLocation::class, 'accounting_location_id');
+    }
+
+    public function physicalLocation(): BelongsTo
+    {
+        return $this->belongsTo(AssetLocation::class, 'physical_location_id');
+    }
+
+    public function facilityNode(): BelongsTo
+    {
+        return $this->belongsTo(FacilityNode::class);
+    }
+
+    public function responsiblePerson(): BelongsTo
+    {
+        return $this->belongsTo(ResponsiblePerson::class);
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(AssetEvent::class);
+    }
+
+    public function movements(): HasMany
+    {
+        return $this->hasMany(AssetMovement::class);
+    }
 }
