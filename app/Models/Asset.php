@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class Asset extends Model
@@ -68,5 +69,10 @@ final class Asset extends Model
     public function movements(): HasMany
     {
         return $this->hasMany(AssetMovement::class);
+    }
+
+    public function disposalCase(): HasOne
+    {
+        return $this->hasOne(AssetDisposalCase::class);
     }
 }

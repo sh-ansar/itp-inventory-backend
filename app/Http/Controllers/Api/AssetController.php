@@ -31,7 +31,8 @@ final class AssetController extends Controller
 
     private function scope(Company $company, string $id, bool $withTrashed = false): Asset
     {
-        $query = $company->assets()->with(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson']);
+        $query = $company->assets()->with(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson'])
+            ->withExists('disposalCase');
         if ($withTrashed) {
             $query->withTrashed();
         }
@@ -58,7 +59,8 @@ final class AssetController extends Controller
             'per_page' => ['nullable', 'integer', Rule::in([10, 25, 50, 100])],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
-        $query = $company->assets()->with(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson']);
+        $query = $company->assets()->with(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson'])
+            ->withExists('disposalCase');
         if (! empty($params['search'])) {
             $term = mb_strtolower(trim($params['search']));
             // '!' is a portable SQL LIKE escape for PostgreSQL and SQLite.
@@ -131,6 +133,8 @@ final class AssetController extends Controller
         $model = DB::transaction(function () use ($request, $company, $asset, $data, $audit): Asset {
             $model = $company->assets()->whereKey($asset)->lockForUpdate()->firstOrFail();
             abort_unless($model->version === $data['version'], 409, 'Asset was modified; reload before saving');
+            abort_unless($model->status === 'active', 409,
+                'Written-off and disposed assets are locked against ordinary edits');
             $before = $this->snapshot($model);
             $model->fill(Arr::only($data, self::EDITABLE));
             if ($model->isDirty()) {
@@ -154,6 +158,10 @@ final class AssetController extends Controller
             $model = $company->assets()->whereKey($asset)->lockForUpdate()->firstOrFail();
             $data = $request->validated();
             abort_unless($model->version === $data['version'], 409, 'Asset was modified; reload before archiving');
+            abort_unless($model->status === 'active', 409,
+                'Write-off and disposal must use the documented workflow');
+            abort_if($model->disposalCase()->exists(), 409,
+                'Assets with a disposal case cannot be archived outside the documented workflow');
             $before = $this->snapshot($model);
             $model->version++;
             $model->save();

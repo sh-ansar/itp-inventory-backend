@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AssetController;
+use App\Http\Controllers\Api\AssetDisposalController;
 use App\Http\Controllers\Api\AssetMovementController;
 use App\Http\Controllers\Api\AssetQrController;
 use App\Http\Controllers\Api\AssetReferenceController;
@@ -71,6 +72,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/categories/{category}/icon', [EquipmentTypeController::class, 'uploadIcon']);
             Route::get('/categories/{category}/icon', [EquipmentTypeController::class, 'icon']);
             Route::post('/locations', [AssetReferenceController::class, 'storeLocation']);
+            Route::get('/disposal-cases', [AssetDisposalController::class, 'index']);
             Route::get('/assets', [AssetController::class, 'index']);
             Route::get('/assets/scan/{publicId}', [AssetQrController::class, 'show']);
             Route::post('/assets', [AssetController::class, 'store']);
@@ -79,6 +81,16 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('/assets/{asset}', [AssetController::class, 'update']);
             Route::delete('/assets/{asset}', [AssetController::class, 'destroy']);
             Route::get('/assets/{asset}/events', [AssetController::class, 'events']);
+            Route::get('/assets/{asset}/disposal-case', [AssetDisposalController::class, 'show']);
+            Route::post('/assets/{asset}/disposal-case', [AssetDisposalController::class, 'create']);
+            Route::put('/assets/{asset}/disposal-case', [AssetDisposalController::class, 'update']);
+            Route::post('/assets/{asset}/disposal-case/submit', [AssetDisposalController::class, 'submit']);
+            Route::post('/assets/{asset}/disposal-case/return', [AssetDisposalController::class, 'returnForCorrection']);
+            Route::post('/assets/{asset}/disposal-case/approve', [AssetDisposalController::class, 'approve']);
+            Route::post('/assets/{asset}/disposal-case/dispose', [AssetDisposalController::class, 'dispose']);
+            Route::post('/assets/{asset}/disposal-case/documents', [AssetDisposalController::class, 'uploadDocument']);
+            Route::get('/assets/{asset}/disposal-case/documents/{document}', [AssetDisposalController::class, 'downloadDocument']);
+            Route::get('/assets/{asset}/disposal-case/events', [AssetDisposalController::class, 'events']);
             Route::get('/assets/{asset}/movements', [AssetMovementController::class, 'index']);
             Route::post('/assets/{asset}/movements', [AssetMovementController::class, 'store']);
         });

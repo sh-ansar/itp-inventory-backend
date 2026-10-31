@@ -27,6 +27,8 @@ final class AssetResource extends JsonResource
             'facility_node_name' => $this->whenLoaded('facilityNode', fn () => $this->facilityNode?->name),
             'responsible_person_id' => $this->responsible_person_id,
             'responsible_person_name' => $this->whenLoaded('responsiblePerson', fn () => $this->responsiblePerson?->name),
+            'has_disposal_case' => (bool) ($this->disposal_case_exists ?? false),
+            'has_disposal_case' => (bool) ($this->disposal_case_exists ?? false),
             'version' => $this->version,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
