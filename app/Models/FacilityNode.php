@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class FacilityNode extends Model
 {
@@ -45,5 +46,10 @@ final class FacilityNode extends Model
     public function events(): HasMany
     {
         return $this->hasMany(FacilityNodeEvent::class);
+    }
+
+    public function plan(): HasOne
+    {
+        return $this->hasOne(FacilityPlan::class, 'facility_node_id');
     }
 }

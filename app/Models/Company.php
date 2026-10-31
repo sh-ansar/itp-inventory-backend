@@ -38,6 +38,11 @@ final class Company extends Model
         return $this->hasMany(FacilityNode::class);
     }
 
+    public function facilityPlans(): HasMany
+    {
+        return $this->hasMany(FacilityPlan::class);
+    }
+
     public function responsiblePeople(): HasMany
     {
         return $this->hasMany(ResponsiblePerson::class);
