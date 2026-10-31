@@ -43,6 +43,11 @@ final class Company extends Model
         return $this->hasMany(FacilityPlan::class);
     }
 
+    public function assetDisposalCases(): HasMany
+    {
+        return $this->hasMany(AssetDisposalCase::class);
+    }
+
     public function responsiblePeople(): HasMany
     {
         return $this->hasMany(ResponsiblePerson::class);
