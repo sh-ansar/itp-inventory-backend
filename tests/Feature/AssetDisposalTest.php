@@ -53,10 +53,10 @@ final class AssetDisposalTest extends TestCase
         $asset = $this->createAsset($company);
         $url = $this->url($company, '/assets/'.$asset['id'].'/disposals');
         $this->post($url, $this->decision('write_off', 1), ['Accept' => 'application/json'])
-            ->assertOk()->assertJsonPath('data.stage', 'write_off')
+            ->assertCreated()->assertJsonPath('data.stage', 'write_off')
             ->assertJsonPath('data.asset_status', 'written_off');
         $this->post($url, $this->decision('disposal', 2), ['Accept' => 'application/json'])
-            ->assertOk()->assertJsonPath('data.asset_status', 'disposed');
+            ->assertCreated()->assertJsonPath('data.asset_status', 'disposed');
         $this->assertDatabaseCount('asset_disposals', 2);
         $this->assertDatabaseCount('asset_disposal_documents', 2);
         $this->getJson($this->url($company, '/asset-disposals'))->assertOk()
@@ -99,7 +99,7 @@ final class AssetDisposalTest extends TestCase
         $this->actingAs($admin);
         $asset = $this->createAsset($a);
         $created = $this->post($this->url($a,'/assets/'.$asset['id'].'/disposals'),
-            $this->decision('write_off',1), ['Accept'=>'application/json'])->assertOk()->json('data');
+            $this->decision('write_off',1), ['Accept'=>'application/json'])->assertCreated()->json('data');
         $document = $created['documents'][0]['id'];
         $path = '/asset-disposals/'.$created['id'].'/documents/'.$document;
         $this->get($this->url($a,$path))->assertOk();
