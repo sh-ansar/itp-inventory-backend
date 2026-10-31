@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AssetController;
+use App\Http\Controllers\Api\AssetDisposalController;
 use App\Http\Controllers\Api\AssetMovementController;
 use App\Http\Controllers\Api\AssetQrController;
 use App\Http\Controllers\Api\AssetReferenceController;
@@ -71,6 +72,8 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/categories/{category}/icon', [EquipmentTypeController::class, 'uploadIcon']);
             Route::get('/categories/{category}/icon', [EquipmentTypeController::class, 'icon']);
             Route::post('/locations', [AssetReferenceController::class, 'storeLocation']);
+            Route::get('/asset-disposals', [AssetDisposalController::class, 'index']);
+            Route::get('/asset-disposals/{disposal}/documents/{document}', [AssetDisposalController::class, 'download']);
             Route::get('/assets', [AssetController::class, 'index']);
             Route::get('/assets/scan/{publicId}', [AssetQrController::class, 'show']);
             Route::post('/assets', [AssetController::class, 'store']);
@@ -79,6 +82,7 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('/assets/{asset}', [AssetController::class, 'update']);
             Route::delete('/assets/{asset}', [AssetController::class, 'destroy']);
             Route::get('/assets/{asset}/events', [AssetController::class, 'events']);
+            Route::post('/assets/{asset}/disposals', [AssetDisposalController::class, 'store']);
             Route::get('/assets/{asset}/movements', [AssetMovementController::class, 'index']);
             Route::post('/assets/{asset}/movements', [AssetMovementController::class, 'store']);
         });
