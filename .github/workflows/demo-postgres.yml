@@ -1,0 +1,52 @@
+name: Inventory demo PostgreSQL rehearsal
+on:
+  push:
+    branches: ["feat/**", "main"]
+    paths:
+      - "app/Console/Commands/SeedShowcaseInventory.php"
+      - "tests/Feature/ShowcaseSeedTest.php"
+      - ".github/workflows/demo-postgres.yml"
+  pull_request:
+    paths:
+      - "app/Console/Commands/SeedShowcaseInventory.php"
+      - "tests/Feature/ShowcaseSeedTest.php"
+      - ".github/workflows/demo-postgres.yml"
+jobs:
+  showcase-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: inventory_demo_ci
+          POSTGRES_USER: inventory_ci
+          POSTGRES_PASSWORD: inventory_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U inventory_ci -d inventory_demo_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, pdo_pgsql, xml, curl, gd, fileinfo
+          coverage: none
+          tools: composer:v2
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: cp .env.example .env
+      - name: Validate isolated demo fixture and tenant boundaries on PostgreSQL 16
+        run: php artisan test --compact --filter=ShowcaseSeedTest
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: "5432"
+          DB_DATABASE: inventory_demo_ci
+          DB_USERNAME: inventory_ci
+          DB_PASSWORD: inventory_ci_only
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
