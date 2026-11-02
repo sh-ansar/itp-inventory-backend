@@ -83,6 +83,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/disposal-cases', [AssetDisposalController::class, 'index']);
             Route::get('/assets/export.xlsx', [AssetBulkController::class, 'export']);
             Route::post('/assets/bulk-responsible', [AssetBulkController::class, 'update']);
+            Route::post('/assets/bulk-move', [AssetBulkController::class, 'move']);
             Route::get('/assets', [AssetController::class, 'index']);
             Route::get('/assets/scan/{publicId}', [AssetQrController::class, 'show']);
             Route::post('/assets', [AssetController::class, 'store']);
