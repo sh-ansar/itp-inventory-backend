@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domain\Inventory\AssetAuditWriter;
 use App\Domain\Inventory\CompanyAccess;
+use App\Domain\Inventory\MultiAssetFilters;
 use App\Domain\Inventory\FacilityHierarchy;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AssetRegistry\ArchiveAssetRequest;
@@ -54,6 +55,7 @@ final class AssetController extends Controller
             'include_descendants' => ['nullable', 'boolean'],
             'responsible_person_id' => ['nullable', 'uuid', Rule::exists('responsible_people', 'id')->where('company_id', $company->id)],
             'status' => ['nullable', Rule::in(['active', 'written_off', 'disposed'])],
+            ...MultiAssetFilters::rules($company),
             'sort' => ['nullable', Rule::in(['inventory_number', 'name', 'created_at', 'updated_at'])],
             'direction' => ['nullable', Rule::in(['asc', 'desc'])],
             'per_page' => ['nullable', 'integer', Rule::in([10, 25, 50, 100])],
@@ -71,19 +73,7 @@ final class AssetController extends Controller
                 ->orWhereRaw("LOWER(name) LIKE ? ESCAPE '!'", [$pattern])
                 ->orWhereRaw("LOWER(serial_number) LIKE ? ESCAPE '!'", [$pattern]));
         }
-        if (! empty($params['facility_node_id'])) {
-            $ids = ($params['include_descendants'] ?? true)
-                ? app(FacilityHierarchy::class)
-                    ->descendants($company, $params['facility_node_id'])
-                : [$params['facility_node_id']];
-            $query->whereIn('facility_node_id', $ids);
-        }
-        if (! empty($params['responsible_person_id'])) {
-            $query->where('responsible_person_id', $params['responsible_person_id']);
-        }
-        if (! empty($params['status'])) {
-            $query->where('status', $params['status']);
-        }
+        MultiAssetFilters::apply($query, $company, $params, $params['include_descendants'] ?? true);
         $sort = $params['sort'] ?? 'inventory_number';
         $direction = $params['direction'] ?? 'asc';
 

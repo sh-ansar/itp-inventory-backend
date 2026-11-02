@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domain\Inventory\AssetAuditWriter;
 use App\Domain\Inventory\CompanyAccess;
+use App\Domain\Inventory\MultiAssetFilters;
 use App\Domain\Inventory\FacilityHierarchy;
 use App\Domain\Inventory\XlsxExport;
 use App\Http\Controllers\Controller;
@@ -28,14 +29,7 @@ final class AssetBulkController extends Controller
                 ->orWhereRaw("LOWER(name) LIKE ? ESCAPE '!'", [$like])
                 ->orWhereRaw("LOWER(serial_number) LIKE ? ESCAPE '!'", [$like]));
         }
-        if (!empty($filters['status'])) $query->where('status', $filters['status']);
-        if (!empty($filters['facility_node_id'])) {
-            $ids = ($filters['include_descendants'] ?? true)
-                ? app(FacilityHierarchy::class)->descendants($company, $filters['facility_node_id'])
-                : [$filters['facility_node_id']];
-            $query->whereIn('facility_node_id', $ids);
-        }
-        if (!empty($filters['responsible_person_id'])) $query->where('responsible_person_id', $filters['responsible_person_id']);
+        MultiAssetFilters::apply($query, $company, $filters, $filters['include_descendants'] ?? true);
         if (!empty($filters['ids'])) $query->whereIn('id', $filters['ids']);
         return $query;
     }
@@ -49,6 +43,7 @@ final class AssetBulkController extends Controller
             'facility_node_id'=>['nullable','uuid',Rule::exists('facility_nodes','id')->where('company_id',$company->id)],
             'include_descendants'=>['nullable','boolean'],
             'responsible_person_id'=>['nullable','uuid',Rule::exists('responsible_people','id')->where('company_id',$company->id)],
+            ...MultiAssetFilters::rules($company),
             'ids'=>['nullable','array','min:1','max:1000'],
             'ids.*'=>['required','uuid','distinct'],
         ]);

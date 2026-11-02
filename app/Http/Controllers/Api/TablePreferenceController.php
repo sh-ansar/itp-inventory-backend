@@ -64,7 +64,7 @@ final class TablePreferenceController extends Controller
         $view = $this->viewKey($view);
         $validColumns = self::VIEWS[$view];
         $values = $request->validate([
-            'settings' => ['required', 'array:search,status,facility_node_id,responsible_person_id,warehouse_node_id,per_page,sort_key,sort_direction,hidden_columns,column_order'],
+            'settings' => ['required', 'array:search,status,facility_node_id,responsible_person_id,warehouse_node_id,statuses,facility_node_ids,responsible_person_ids,per_page,sort_key,sort_direction,hidden_columns,column_order'],
             'settings.search' => ['nullable', 'string', 'max:120'],
             'settings.status' => ['nullable', Rule::in(['', 'active', 'written_off', 'disposed', 'draft', 'submitted', 'approved',
                 'in_progress', 'completed', '1', '0'])],
@@ -74,6 +74,12 @@ final class TablePreferenceController extends Controller
                 Rule::exists('responsible_people', 'id')->where('company_id', $company->id)],
             'settings.warehouse_node_id' => ['nullable','uuid',
                 Rule::exists('facility_nodes', 'id')->where('company_id', $company->id)],
+            'settings.statuses' => ['sometimes','array','max:30'],
+            'settings.statuses.*' => ['required','string','distinct',Rule::in(['active','written_off','disposed'])],
+            'settings.facility_node_ids' => ['sometimes','array','max:30'],
+            'settings.facility_node_ids.*' => ['required','uuid','distinct',Rule::exists('facility_nodes','id')->where('company_id',$company->id)],
+            'settings.responsible_person_ids' => ['sometimes','array','max:30'],
+            'settings.responsible_person_ids.*' => ['required','uuid','distinct',Rule::exists('responsible_people','id')->where('company_id',$company->id)],
             'settings.per_page' => ['nullable', 'integer', Rule::in([10, 25, 50, 100])],
             'settings.sort_key' => ['nullable', Rule::in(self::SORTABLE[$view])],
             'settings.sort_direction' => ['nullable', Rule::in(['asc', 'desc'])],

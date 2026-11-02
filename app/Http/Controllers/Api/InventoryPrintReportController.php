@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Domain\Inventory\CompanyAccess;
+use App\Domain\Inventory\MultiAssetFilters;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +30,12 @@ final class InventoryPrintReportController extends Controller
 
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:120'],
+            ...MultiAssetFilters::rules($company),
+            'disposal_statuses' => ['sometimes', 'array', 'max:30'],
+            'disposal_statuses.*' => ['required', 'string', 'distinct', Rule::in(['draft','submitted','approved','disposed'])],
+            'warehouse_node_ids' => ['sometimes', 'array', 'max:30'],
+            'warehouse_node_ids.*' => ['required', 'uuid', 'distinct', Rule::exists('facility_nodes', 'id')
+                ->where('company_id', $company->id)->where('node_type', 'warehouse')],
             'status' => ['nullable', Rule::in(['active', 'written_off', 'disposed'])],
             'disposal_status' => ['nullable', Rule::in(['draft','submitted','approved','disposed'])],
             'facility_node_id' => ['nullable','uuid',
@@ -96,19 +103,13 @@ final class InventoryPrintReportController extends Controller
                 'a.responsible_person_id','p.name as responsible_person_name',
                 'p.position as responsible_person_position',
             ]);
-        $this->applyAssetFilters($q,$filters,'a');
+        $this->applyAssetFilters($q,$company,$filters,'a');
         return $this->limited($q->orderBy('a.inventory_number')->orderBy('a.id'));
     }
 
-    private function applyAssetFilters($query, array $filters, string $alias): void
+    private function applyAssetFilters($query, Company $company, array $filters, string $alias): void
     {
-        if (!empty($filters['status'])) $query->where($alias.'.status',$filters['status']);
-        if (!empty($filters['facility_node_id'])) {
-            $query->where($alias.'.facility_node_id',$filters['facility_node_id']);
-        }
-        if (!empty($filters['responsible_person_id'])) {
-            $query->where($alias.'.responsible_person_id',$filters['responsible_person_id']);
-        }
+        MultiAssetFilters::apply($query, $company, $filters, false, $alias.'.');
         if (!empty($filters['search'])) {
             $term = str_replace(['!', '%', '_'], ['!!', '!%', '!_'],
                 mb_strtolower(trim($filters['search'])));
@@ -135,7 +136,9 @@ final class InventoryPrintReportController extends Controller
                 'i.code','i.name','i.unit','i.is_active',
                 'b.quantity_milli','i.minimum_quantity_milli',
             ]);
-        if (!empty($filters['warehouse_node_id'])) {
+        if (array_key_exists('warehouse_node_ids', $filters)) {
+            if ($filters['warehouse_node_ids'] !== []) $q->whereIn('b.warehouse_node_id', $filters['warehouse_node_ids']);
+        } elseif (!empty($filters['warehouse_node_id'])) {
             $q->where('b.warehouse_node_id', $filters['warehouse_node_id']);
         }
         if (!empty($filters['search'])) {
@@ -213,14 +216,12 @@ final class InventoryPrintReportController extends Controller
                 'a.status as asset_status','a.facility_node_id','f.name as facility_name',
                 'a.responsible_person_id','p.name as responsible_person_name',
             ]);
-        if (!empty($filters['disposal_status'])) $q->where('d.status',$filters['disposal_status']);
-        if (!empty($filters['status'])) $q->where('a.status',$filters['status']);
-        if (!empty($filters['facility_node_id'])) {
-            $q->where('a.facility_node_id',$filters['facility_node_id']);
+        if (array_key_exists('disposal_statuses', $filters)) {
+            if ($filters['disposal_statuses'] !== []) $q->whereIn('d.status', $filters['disposal_statuses']);
+        } elseif (!empty($filters['disposal_status'])) {
+            $q->where('d.status', $filters['disposal_status']);
         }
-        if (!empty($filters['responsible_person_id'])) {
-            $q->where('a.responsible_person_id',$filters['responsible_person_id']);
-        }
+        MultiAssetFilters::apply($q, $company, $filters, false, 'a.');
         if (!empty($filters['search'])) {
             $term = str_replace(['!', '%', '_'], ['!!','!%','!_'],
                 mb_strtolower(trim($filters['search'])));
