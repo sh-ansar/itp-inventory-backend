@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\CompanyMemberController;
 use App\Http\Controllers\Api\StocktakeDocumentController;
+use App\Http\Controllers\Api\StocktakeXlsxController;
 use App\Http\Controllers\Api\AssetBulkController;
 use App\Http\Controllers\Api\AssetDisposalController;
 use App\Http\Controllers\Api\AssetMovementController;
@@ -49,6 +50,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/inventory-sessions/{session}/documents/{document}', [StocktakeDocumentController::class, 'download']);
             Route::get('/members', [CompanyMemberController::class, 'index']);
             Route::put('/members/{user}', [CompanyMemberController::class, 'update']);
+            Route::get('/inventory-sessions/{session}/report.xlsx', [StocktakeXlsxController::class, 'export']);
             Route::get('/inventory-sessions/{session}/report.csv', [InventorySessionController::class, 'export']);
             Route::get('/stock-items', [WarehouseController::class, 'items']);
             Route::post('/stock-items', [WarehouseController::class, 'storeItem']);
