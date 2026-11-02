@@ -42,6 +42,9 @@ return new class extends Migration {
             $table->string('external_id', 180);
             $table->uuid('internal_id');
             $table->timestamps();
+            // An external mapping cannot point at another company's asset.
+            $table->foreign(['internal_id', 'company_id'], 'inventory_mapping_asset_company_fk')
+                ->references(['id', 'company_id'])->on('assets')->restrictOnDelete();
             $table->unique(['company_id', 'system_code', 'entity_type', 'external_id'],
                 'inventory_mapping_external_unique');
             $table->unique(['company_id', 'system_code', 'entity_type', 'internal_id'],
