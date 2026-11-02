@@ -100,7 +100,7 @@ final class LegacyParityExpandedTest extends TestCase
         $this->postJson($base.'/complete',['version'=>1])->assertOk()->assertJsonPath('data.version',2);
         $signed=UploadedFile::fake()->createWithContent('report.pdf',"%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF");
         $attachment=$this->post($base.'/documents',[
-            'version'=>2,'file'=>$signed,
+            'version'=>'2','file'=>$signed,
         ],['Accept'=>'application/json'])->assertCreated()->json('data');
         $this->assertSame(hash('sha256',"%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF"),$attachment['sha256']);
         $this->getJson($base.'/documents')->assertOk()->assertJsonCount(1,'data');
