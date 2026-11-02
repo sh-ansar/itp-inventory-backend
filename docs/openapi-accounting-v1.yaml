@@ -1,0 +1,271 @@
+openapi: 3.1.0
+info:
+  title: ITP Inventory Accounting Integration API
+  version: 1.0.0-qa
+  description: |
+    Opt-in, read-only, company-scoped integration for 1C and accounting systems.
+    There are no external write endpoints. Import preview never writes records.
+    Requires INVENTORY_INTEGRATIONS_ENABLED=true after separate operational acceptance.
+servers:
+  - url: https://platform.itpmining.kz/inventory-api
+security:
+  - IntegrationBearer: []
+tags:
+  - name: Accounting integration
+paths:
+  /api/v1/external/companies/{company}/metadata:
+    get:
+      tags: [Accounting integration]
+      summary: Describe the active accounting exchange contract
+      operationId: getAccountingMetadata
+      parameters:
+        - $ref: '#/components/parameters/Company'
+      responses:
+        '200':
+          description: Contract and available capabilities
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [api_version, company_id, direction, capabilities, quantity_scale, import_enabled]
+                    properties:
+                      api_version: {type: string, example: '1.0'}
+                      company_id: {type: string, format: uuid}
+                      system_code: {type: string, example: '1c'}
+                      direction: {type: string, const: read_only_with_import_preview}
+                      capabilities: {type: array, items: {type: string}}
+                      asset_fields: {type: array, items: {type: string}}
+                      quantity_scale: {type: integer, const: 1000}
+                      clock: {type: string, example: ISO-8601 UTC}
+                      import_enabled: {type: boolean, const: false}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/external/companies/{company}/assets:
+    get:
+      tags: [Accounting integration]
+      summary: Read a company-scoped, UUID-cursor asset feed
+      operationId: listAccountingAssets
+      description: |
+        Inclusive updated_since/updated_until filters and ascending asset UUID cursor.
+        The client must keep the same cutoff across pages, deduplicate by company,
+        asset UUID and version, and advance its watermark only on complete success.
+        This is not an atomic snapshot across concurrent writes.
+      parameters:
+        - $ref: '#/components/parameters/Company'
+        - in: query
+          name: after_id
+          schema: {type: string, format: uuid}
+        - in: query
+          name: per_page
+          schema: {type: integer, minimum: 1, maximum: 100, default: 100}
+        - in: query
+          name: updated_since
+          schema: {type: string, format: date-time}
+        - in: query
+          name: updated_until
+          schema: {type: string, format: date-time}
+      responses:
+        '200':
+          description: Assets and the next page cursor, if any
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/Asset'}
+                  meta:
+                    type: object
+                    required: [count, next_after_id, updated_until, schema_version]
+                    properties:
+                      count: {type: integer}
+                      next_after_id: {type: [string, 'null'], format: uuid}
+                      updated_until: {type: string}
+                      schema_version: {type: string, const: '1.0'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/v1/external/companies/{company}/references:
+    get:
+      tags: [Accounting integration]
+      summary: List accounting reference directories for one company
+      operationId: listAccountingReferences
+      parameters:
+        - $ref: '#/components/parameters/Company'
+      responses:
+        '200':
+          description: Categories, locations, people and facility hierarchy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      categories: {type: array, items: {type: object}}
+                      locations: {type: array, items: {type: object}}
+                      responsible_people: {type: array, items: {type: object}}
+                      facility_nodes: {type: array, items: {type: object}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /api/v1/external/companies/{company}/stock:
+    get:
+      tags: [Accounting integration]
+      summary: Read stock balances (quantities stored in thousandths)
+      operationId: listAccountingStock
+      parameters:
+        - $ref: '#/components/parameters/Company'
+        - in: query
+          name: after_id
+          schema: {type: integer, minimum: 0}
+        - in: query
+          name: per_page
+          schema: {type: integer, minimum: 1, maximum: 100, default: 100}
+      responses:
+        '200':
+          description: Stock balances and cursor
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/StockBalance'}}
+                  meta:
+                    type: object
+                    properties:
+                      count: {type: integer}
+                      next_after_id: {type: [integer, 'null']}
+                      quantity_scale: {type: integer, const: 1000}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /api/v1/external/companies/{company}/imports/preview:
+    post:
+      tags: [Accounting integration]
+      summary: Check proposed external asset mappings (dry run only)
+      operationId: previewAccountingImport
+      description: This endpoint never creates, updates, archives or disposes assets.
+      parameters:
+        - $ref: '#/components/parameters/Company'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [mode, entity_type, records]
+              properties:
+                mode: {type: string, const: dry_run}
+                entity_type: {type: string, const: asset}
+                records:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [external_id, inventory_number, name]
+                    properties:
+                      external_id: {type: string, minLength: 1, maxLength: 180}
+                      inventory_number: {type: string, minLength: 1, maxLength: 100}
+                      name: {type: string, minLength: 1, maxLength: 255}
+      responses:
+        '200':
+          description: Per-row decisions; zero records written
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dry_run, written, company_id, system_code, data, summary]
+                properties:
+                  dry_run: {type: boolean, const: true}
+                  written: {type: integer, const: 0}
+                  company_id: {type: string, format: uuid}
+                  system_code: {type: string}
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        row: {type: integer, minimum: 0}
+                        external_id: {type: string}
+                        inventory_number: {type: string}
+                        decision:
+                          type: string
+                          enum: [mapped, manual_match_required, new_candidate, conflict]
+                        matched_asset_id: {type: [string, 'null'], format: uuid}
+                        issues: {type: array, items: {type: string}}
+                  summary: {type: object}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
+components:
+  securitySchemes:
+    IntegrationBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: "inv_ + 64 random ASCII characters"
+      description: |
+        Tokens are generated by an authorized operator, scoped to one company and
+        set of abilities, and revoked by key ID. Never put a token in a URL.
+  parameters:
+    Company:
+      in: path
+      name: company
+      required: true
+      description: Inventory company UUID bound to the token
+      schema: {type: string, format: uuid}
+  responses:
+    Unauthorized:
+      description: Missing, invalid, expired or wrong-company token
+    Forbidden:
+      description: Token lacks the ability required by the endpoint
+    Unavailable:
+      description: Integration disabled or company not available
+    InvalidInput:
+      description: Validation failure
+    RateLimited:
+      description: Rate limit exceeded
+  schemas:
+    Asset:
+      type: object
+      required: [id, public_id, inventory_number, name, status, version]
+      properties:
+        id: {type: string, format: uuid}
+        public_id: {type: string, format: uuid}
+        external_id: {type: [string, 'null']}
+        inventory_number: {type: string}
+        name: {type: string}
+        serial_number: {type: [string, 'null']}
+        status: {type: string, enum: [active, written_off, disposed]}
+        category_id: {type: [string, 'null'], format: uuid}
+        accounting_location_id: {type: [string, 'null'], format: uuid}
+        physical_location_id: {type: [string, 'null'], format: uuid}
+        facility_node_id: {type: [string, 'null'], format: uuid}
+        responsible_person_id: {type: [string, 'null'], format: uuid}
+        version: {type: integer, minimum: 1}
+        updated_at: {type: [string, 'null']}
+        deleted_at: {type: [string, 'null']}
+    StockBalance:
+      type: object
+      required: [id, stock_item_id, warehouse_node_id, quantity_milli]
+      properties:
+        id: {type: integer}
+        stock_item_id: {type: string, format: uuid}
+        warehouse_node_id: {type: string, format: uuid}
+        quantity_milli: {type: integer, minimum: 0}
+        updated_at: {type: string}
+        code: {type: string}
+        name: {type: string}
+        unit: {type: string}
+        version: {type: integer}
