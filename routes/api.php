@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AssetController;
+use App\Http\Controllers\Api\CompanyMemberController;
+use App\Http\Controllers\Api\StocktakeDocumentController;
 use App\Http\Controllers\Api\AssetBulkController;
 use App\Http\Controllers\Api\AssetDisposalController;
 use App\Http\Controllers\Api\AssetMovementController;
@@ -42,6 +44,11 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/inventory-sessions/{session}/complete', [InventorySessionController::class, 'complete']);
             Route::post('/inventory-sessions/{session}/reopen', [InventorySessionController::class, 'reopen']);
             Route::get('/inventory-sessions/{session}/events', [InventorySessionController::class, 'events']);
+            Route::get('/inventory-sessions/{session}/documents', [StocktakeDocumentController::class, 'index']);
+            Route::post('/inventory-sessions/{session}/documents', [StocktakeDocumentController::class, 'store']);
+            Route::get('/inventory-sessions/{session}/documents/{document}', [StocktakeDocumentController::class, 'download']);
+            Route::get('/members', [CompanyMemberController::class, 'index']);
+            Route::put('/members/{user}', [CompanyMemberController::class, 'update']);
             Route::get('/inventory-sessions/{session}/report.csv', [InventorySessionController::class, 'export']);
             Route::get('/stock-items', [WarehouseController::class, 'items']);
             Route::post('/stock-items', [WarehouseController::class, 'storeItem']);
