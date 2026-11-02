@@ -5,11 +5,15 @@ on:
     paths:
       - "app/Console/Commands/SeedShowcaseInventory.php"
       - "tests/Feature/ShowcaseSeedTest.php"
+      - "app/Console/Commands/EnrichShowcaseInventory.php"
+      - "tests/Feature/ShowcaseEnrichmentTest.php"
       - ".github/workflows/demo-postgres.yml"
   pull_request:
     paths:
       - "app/Console/Commands/SeedShowcaseInventory.php"
       - "tests/Feature/ShowcaseSeedTest.php"
+      - "app/Console/Commands/EnrichShowcaseInventory.php"
+      - "tests/Feature/ShowcaseEnrichmentTest.php"
       - ".github/workflows/demo-postgres.yml"
 jobs:
   showcase-postgres:
@@ -37,7 +41,7 @@ jobs:
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: cp .env.example .env
       - name: Validate isolated demo fixture and tenant boundaries on PostgreSQL 16
-        run: php artisan test --compact --filter=ShowcaseSeedTest
+        run: php artisan test --compact --filter=Showcase
         env:
           APP_ENV: testing
           APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
