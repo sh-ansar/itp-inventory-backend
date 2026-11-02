@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AssetController;
+use App\Http\Controllers\Api\AssetBulkController;
 use App\Http\Controllers\Api\AssetDisposalController;
 use App\Http\Controllers\Api\AssetMovementController;
 use App\Http\Controllers\Api\AssetQrController;
@@ -73,6 +74,8 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/categories/{category}/icon', [EquipmentTypeController::class, 'icon']);
             Route::post('/locations', [AssetReferenceController::class, 'storeLocation']);
             Route::get('/disposal-cases', [AssetDisposalController::class, 'index']);
+            Route::get('/assets/export.xlsx', [AssetBulkController::class, 'export']);
+            Route::post('/assets/bulk-responsible', [AssetBulkController::class, 'update']);
             Route::get('/assets', [AssetController::class, 'index']);
             Route::get('/assets/scan/{publicId}', [AssetQrController::class, 'show']);
             Route::post('/assets', [AssetController::class, 'store']);
