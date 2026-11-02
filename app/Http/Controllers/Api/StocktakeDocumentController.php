@@ -50,7 +50,7 @@ final class StocktakeDocumentController extends Controller
         try {
             $row=DB::transaction(function () use ($request,$company,$session,$data,$file,$bytes,$mime,$id,$path) {
                 $stocktake=$company->inventorySessions()->whereKey($session)->lockForUpdate()->firstOrFail();
-                abort_unless($stocktake->version===$data['version'],409,'Stocktake changed');
+                abort_unless($stocktake->version===(int) $data['version'],409,'Stocktake changed');
                 abort_unless($stocktake->status==='completed',409,'Only completed stocktakes accept signed reports');
                 $original=mb_substr(basename(str_replace('\\','/',$file->getClientOriginalName())),0,180);
                 $record=[
