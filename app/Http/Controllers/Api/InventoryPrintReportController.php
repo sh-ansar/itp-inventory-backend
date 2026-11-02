@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Domain\Inventory\CompanyAccess;
+use App\Domain\Inventory\MultiAssetFilters;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +30,12 @@ final class InventoryPrintReportController extends Controller
 
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:120'],
+            ...MultiAssetFilters::rules($company),
+            'disposal_statuses' => ['sometimes', 'array', 'max:30'],
+            'disposal_statuses.*' => ['required', 'string', 'distinct', Rule::in(['draft','submitted','approved','disposed'])],
+            'warehouse_node_ids' => ['sometimes', 'array', 'max:30'],
+            'warehouse_node_ids.*' => ['required', 'uuid', 'distinct', Rule::exists('facility_nodes', 'id')
+                ->where('company_id', $company->id)->where('node_type', 'warehouse')],
             'status' => ['nullable', Rule::in(['active', 'written_off', 'disposed'])],
             'disposal_status' => ['nullable', Rule::in(['draft','submitted','approved','disposed'])],
             'facility_node_id' => ['nullable','uuid',
@@ -102,13 +109,7 @@ final class InventoryPrintReportController extends Controller
 
     private function applyAssetFilters($query, array $filters, string $alias): void
     {
-        if (!empty($filters['status'])) $query->where($alias.'.status',$filters['status']);
-        if (!empty($filters['facility_node_id'])) {
-            $query->where($alias.'.facility_node_id',$filters['facility_node_id']);
-        }
-        if (!empty($filters['responsible_person_id'])) {
-            $query->where($alias.'.responsible_person_id',$filters['responsible_person_id']);
-        }
+        MultiAssetFilters::apply($query, $company, $filters, false, $alias.'.');
         if (!empty($filters['search'])) {
             $term = str_replace(['!', '%', '_'], ['!!', '!%', '!_'],
                 mb_strtolower(trim($filters['search'])));
