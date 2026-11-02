@@ -70,15 +70,18 @@ final class AccountingIntegrationController extends Controller
     public function references(Request $request, Company $company): JsonResponse
     {
         $id=$company->id;
+        $directory=static function (string $table,string $sort,array $columns) use ($id) {
+            $query=DB::table($table)->where('company_id',$id);
+            // Never return a silently incomplete reference catalog to accounting.
+            abort_if((clone $query)->count()>3000,413,
+                'Reference catalog too large for v1; use a paginated integration contract');
+            return $query->orderBy($sort)->get($columns);
+        };
         return response()->json(['data'=>[
-            'categories'=>DB::table('asset_categories')->where('company_id',$id)
-                ->orderBy('code')->limit(3000)->get(['id','code','name']),
-            'locations'=>DB::table('asset_locations')->where('company_id',$id)
-                ->orderBy('code')->limit(3000)->get(['id','code','name','kind']),
-            'responsible_people'=>DB::table('responsible_people')->where('company_id',$id)
-                ->orderBy('name')->limit(3000)->get(['id','name']),
-            'facility_nodes'=>DB::table('facility_nodes')->where('company_id',$id)
-                ->orderBy('name')->limit(3000)->get(['id','parent_id','name','node_type']),
+            'categories'=>$directory('asset_categories','code',['id','code','name']),
+            'locations'=>$directory('asset_locations','code',['id','code','name','kind']),
+            'responsible_people'=>$directory('responsible_people','name',['id','name']),
+            'facility_nodes'=>$directory('facility_nodes','name',['id','parent_id','name','node_type']),
         ]],200,['Cache-Control'=>'private, no-store']);
     }
 
