@@ -8,6 +8,8 @@ use App\Domain\Inventory\FacilityHierarchy;
 use App\Domain\Inventory\XlsxExport;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +64,56 @@ final class AssetBulkController extends Controller
             }
         })();
         return $xlsx->download('inventory-assets.xlsx','Assets',$rows);
+    }
+
+    public function move(Request $request, Company $company, CompanyAccess $access, AssetAuditWriter $audit): JsonResponse
+    {
+        $access->canWrite($request,$company);
+        $data=$request->validate([
+            'assets'=>['required','array','min:1','max:100'],
+            'assets.*.id'=>['required','uuid','distinct'],
+            'assets.*.version'=>['required','integer','min:1'],
+            'to_location_id'=>['required','uuid',Rule::exists('asset_locations','id')
+                ->where('company_id',$company->id)->where('kind','physical')],
+            'reason'=>['required','string','min:5','max:1000'],
+        ]);
+        $changed=DB::transaction(function () use ($request,$company,$data,$audit) {
+            $expected=collect($data['assets'])->keyBy('id');
+            $assets=$company->assets()->whereIn('id',$expected->keys()->all())
+                ->orderBy('id')->lockForUpdate()->get();
+            abort_unless($assets->count()===$expected->count(),409,'Asset set changed');
+            $destination=$company->assetLocations()->whereKey($data['to_location_id'])
+                ->where('kind','physical')->firstOrFail();
+            foreach ($assets as $asset) {
+                abort_unless($asset->version===$expected[$asset->id]['version']
+                    && $asset->status==='active',409,'Asset changed or is inactive');
+                abort_if($asset->disposalCase()->exists(),409,'Asset has an active disposal case');
+            }
+            $count=0;
+            foreach ($assets as $asset) {
+                if ($asset->physical_location_id===$destination->id) continue;
+                $old=$asset->physicalLocation;
+                $previous=['physical_location_id'=>$asset->physical_location_id,
+                    'physical_location_name'=>$old?->name,'version'=>$asset->version];
+                $asset->physical_location_id=$destination->id;
+                $asset->version++;
+                $asset->save();
+                $asset->movements()->create([
+                    'id'=>(string) Str::uuid(),'company_id'=>$company->id,
+                    'from_location_id'=>$old?->id,'to_location_id'=>$destination->id,
+                    'from_location_name'=>$old?->name,'to_location_name'=>$destination->name,
+                    'actor_id'=>$request->user()->id,'actor_name'=>$request->user()->name,
+                    'reason'=>$data['reason'],'version'=>$asset->version,
+                ]);
+                $audit->record($asset,$request->user(),'moved',$previous,[
+                    'physical_location_id'=>$destination->id,'physical_location_name'=>$destination->name,
+                    'version'=>$asset->version,
+                ],$data['reason']);
+                $count++;
+            }
+            return $count;
+        },3);
+        return response()->json(['moved'=>$changed]);
     }
 
     public function update(Request $request, Company $company, CompanyAccess $access, AssetAuditWriter $audit): JsonResponse
