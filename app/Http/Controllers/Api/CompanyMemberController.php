@@ -25,6 +25,60 @@ final class CompanyMemberController extends Controller
                 'email'=>$m->user->email,'active'=>$m->user->is_active,'role_code'=>$m->role_code]);
         return response()->json(['data'=>$members]);
     }
+
+    public function store(Request $request,Company $company,CompanyAccess $access): JsonResponse
+    {
+        $access->canArchive($request,$company);
+        $data=$request->validate([
+            'email'=>['required','email','max:255'],
+            'role_code'=>['required',Rule::in(['viewer','inventory_manager','company_admin'])],
+            'reason'=>['required','string','min:5','max:1000'],
+        ]);
+        return DB::transaction(function () use ($request,$company,$data) {
+            $email=mb_strtolower(trim($data['email']));
+            $person=User::query()->whereRaw('LOWER(email) = ?',[$email])->where('is_active',true)->first();
+            if (!$person) throw ValidationException::withMessages(['email'=>['No active Inventory account found']]);
+            abort_if(CompanyMembership::query()->where('company_id',$company->id)
+                ->where('user_id',$person->id)->exists(),409,'User already belongs to this company');
+            $person->companyMemberships()->create([
+                'company_id'=>$company->id,'role_code'=>$data['role_code'],
+            ]);
+            DB::table('company_membership_events')->insert([
+                'id'=>(string) Str::uuid(),'company_id'=>$company->id,
+                'target_user_id'=>$person->id,'actor_id'=>$request->user()->id,
+                'actor_name'=>$request->user()->name,'event_type'=>'member_added',
+                'after_role'=>$data['role_code'],'reason'=>$data['reason'],
+                'created_at'=>now(),
+            ]);
+            return response()->json(['ok'=>true,'user_id'=>$person->id],201);
+        },3);
+    }
+
+    public function destroy(Request $request,Company $company,int $user,CompanyAccess $access): JsonResponse
+    {
+        $access->canArchive($request,$company);
+        $data=$request->validate(['reason'=>['required','string','min:5','max:1000']]);
+        return DB::transaction(function () use ($company,$request,$user,$data) {
+            $members=CompanyMembership::query()->where('company_id',$company->id)
+                ->orderBy('id')->lockForUpdate()->get();
+            $member=$members->firstWhere('user_id',$user);
+            abort_unless($member,404);
+            abort_if($user===$request->user()->id,409,'Cannot revoke your own access');
+            abort_if($member->role_code==='company_admin' &&
+                $members->where('role_code','company_admin')->count()<=1,409,
+                'At least one company administrator must remain');
+            $previous=$member->role_code;
+            $member->delete();
+            DB::table('company_membership_events')->insert([
+                'id'=>(string) Str::uuid(),'company_id'=>$company->id,
+                'target_user_id'=>$user,'actor_id'=>$request->user()->id,
+                'actor_name'=>$request->user()->name,'event_type'=>'member_removed',
+                'before_role'=>$previous,'reason'=>$data['reason'],'created_at'=>now(),
+            ]);
+            return response()->json(['ok'=>true]);
+        },3);
+    }
+
     public function update(Request $request,Company $company,int $user,CompanyAccess $access): JsonResponse
     {
         $access->canArchive($request,$company);
