@@ -49,7 +49,9 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/inventory-sessions/{session}/documents', [StocktakeDocumentController::class, 'store']);
             Route::get('/inventory-sessions/{session}/documents/{document}', [StocktakeDocumentController::class, 'download']);
             Route::get('/members', [CompanyMemberController::class, 'index']);
+            Route::post('/members', [CompanyMemberController::class, 'store']);
             Route::put('/members/{user}', [CompanyMemberController::class, 'update']);
+            Route::delete('/members/{user}', [CompanyMemberController::class, 'destroy']);
             Route::get('/inventory-sessions/{session}/report.xlsx', [StocktakeXlsxController::class, 'export']);
             Route::get('/inventory-sessions/{session}/report.csv', [InventorySessionController::class, 'export']);
             Route::get('/stock-items', [WarehouseController::class, 'items']);
