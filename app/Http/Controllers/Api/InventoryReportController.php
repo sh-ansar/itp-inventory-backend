@@ -36,11 +36,13 @@ final class InventoryReportController extends Controller
             $base->where('a.responsible_person_id', $filters['responsible_person_id']);
         }
         $group = static function ($query, string $id, string $name): array {
-            return $query->selectRaw($id.' as id, '.$name.' as name, COUNT(*) as total')
+            $rows = $query->selectRaw($id.' as id, '.$name.' as name, COUNT(*) as total')
                 ->groupBy($id, $name)->orderByDesc('total')->orderBy('name')
-                ->limit(200)->get()
-                ->map(fn ($row) => ['id' => $row->id, 'name' => $row->name ?: null,
-                    'total' => (int) $row->total])->all();
+                ->limit(3001)->get();
+            // An accounting summary must never silently omit group rows.
+            abort_if($rows->count() > 3000, 413, 'Too many report groups; narrow the report');
+            return $rows->map(fn ($row) => ['id' => $row->id, 'name' => $row->name ?: null,
+                'total' => (int) $row->total])->all();
         };
         $byStatus = $group(clone $base, 'a.status', 'a.status');
         $byCategory = $group((clone $base)
@@ -50,12 +52,15 @@ final class InventoryReportController extends Controller
         $byPerson = $group((clone $base)
             ->leftJoin('responsible_people as p','p.id','=','a.responsible_person_id'), 'a.responsible_person_id', 'p.name');
 
-        $stock = DB::table('stock_balances as b')->where('b.company_id',$company->id)
+        $warehouseRows = DB::table('stock_balances as b')->where('b.company_id',$company->id)
             ->leftJoin('facility_nodes as f','f.id','=','b.warehouse_node_id')
             ->selectRaw('b.warehouse_node_id as id, f.name as name, COUNT(DISTINCT b.stock_item_id) as items, SUM(b.quantity_milli) as quantity_milli')
-            ->groupBy('b.warehouse_node_id','f.name')->orderBy('f.name')->limit(200)->get()
-            ->map(fn ($row) => ['id'=>$row->id,'name'=>$row->name,
-                'items'=>(int)$row->items, 'quantity_milli'=>(int)$row->quantity_milli])->all();
+            ->groupBy('b.warehouse_node_id','f.name')->orderBy('f.name')->limit(3001)->get();
+        abort_if($warehouseRows->count() > 3000, 413, 'Too many warehouses; narrow the report');
+        $stock = $warehouseRows->map(fn ($row) => [
+            'id'=>$row->id,'name'=>$row->name,
+            'items'=>(int)$row->items,'quantity_milli'=>(int)$row->quantity_milli,
+        ])->all();
         $lowStock = DB::table('stock_items as i')->where('i.company_id', $company->id)
             ->where('i.is_active', true)->leftJoin('stock_balances as b', function ($join) {
                 $join->on('b.stock_item_id','=','i.id')->on('b.company_id','=','i.company_id');
