@@ -74,8 +74,14 @@ final class PreferencesReportsIntegrationTest extends TestCase
         $a=$this->company();$b=$this->company();
         $admin=$this->actor($a,'company_admin');
         $this->actingAs($admin);
+        // Spreadsheet formula injection must be escaped in exported group names.
+        $categoryId=(string)Str::uuid();
+        DB::table('asset_categories')->insert([
+            'id'=>$categoryId,'company_id'=>$a->id,'code'=>'UNSAFE',
+            'name'=>'=2+3','created_at'=>now(),'updated_at'=>now(),
+        ]);
         $this->postJson($this->root($a).'/assets',[
-            'inventory_number'=>'=2+3','name'=>'Test printer',
+            'inventory_number'=>'=2+3','name'=>'Test printer','category_id'=>$categoryId,
         ])->assertCreated();
         $this->postJson($this->root($a).'/assets',[
             'inventory_number'=>'INV-002','name'=>'Test PC',
@@ -95,6 +101,7 @@ final class PreferencesReportsIntegrationTest extends TestCase
         $csv->assertOk()->assertHeader('Content-Type','text/csv; charset=UTF-8');
         $data=$csv->streamedContent();
         $this->assertStringNotContainsString('TOP-SECRET',$data);
+        $this->assertStringContainsString("'=2+3",$data);
         $this->assertStringContainsString('Summary report',$data);
         $this->actingAs($this->actor($b));
         $this->getJson($url)->assertNotFound();
