@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Console\Commands\SeedShowcaseInventory;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,7 +25,7 @@ final class ShowcaseEnrichmentTest extends TestCase
         ]);
         $this->artisan('inventory:demo:seed')->assertExitCode(0);
         $this->artisan('inventory:demo:enrich', ['--dry-run' => true])->assertExitCode(0);
-        $demo = Company::query()->where('name','like','[DEMO]%')->firstOrFail();
+        $demo = Company::findOrFail(SeedShowcaseInventory::COMPANY_ID);
         $this->assertSame(14, $demo->assetCategories()->count());
         $this->assertSame(3, $demo->assetDisposalCases()->count());
 
