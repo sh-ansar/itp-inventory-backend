@@ -46,15 +46,40 @@ final class InventoryReportController extends Controller
         $byPerson = $group((clone $base)
             ->leftJoin('responsible_people as p','p.id','=','a.responsible_person_id'), 'a.responsible_person_id', 'p.name');
 
-        $warehouseRows = DB::table('stock_balances as b')->where('b.company_id',$company->id)
-            ->leftJoin('facility_nodes as f','f.id','=','b.warehouse_node_id')
-            ->selectRaw('b.warehouse_node_id as id, f.name as name, COUNT(DISTINCT b.stock_item_id) as items, SUM(b.quantity_milli) as quantity_milli')
-            ->groupBy('b.warehouse_node_id','f.name')->orderBy('f.name')->limit(3001)->get();
-        abort_if($warehouseRows->count() > 3000, 413, 'Too many warehouses; narrow the report');
-        $stock = $warehouseRows->map(fn ($row) => [
-            'id'=>$row->id,'name'=>$row->name,
-            'items'=>(int)$row->items,'quantity_milli'=>(int)$row->quantity_milli,
-        ])->all();
+        // Quantities are additive only WITHIN the same physical unit: kg + pcs has no
+        // accounting meaning. Group per warehouse AND stock unit, then expose each
+        // unit explicitly in API, printable summary and CSV (never a mixed total).
+        $warehouseUnitRows = DB::table('stock_balances as b')
+            ->where('b.company_id', $company->id)
+            ->join('stock_items as i', function ($join) {
+                $join->on('i.id','=','b.stock_item_id')->on('i.company_id','=','b.company_id');
+            })
+            ->leftJoin('facility_nodes as f', function ($join) {
+                $join->on('f.id','=','b.warehouse_node_id')->on('f.company_id','=','b.company_id');
+            })
+            ->selectRaw('b.warehouse_node_id as id, f.name as name, i.unit as unit, COUNT(DISTINCT b.stock_item_id) as items, COALESCE(SUM(b.quantity_milli),0) as quantity_milli')
+            ->groupBy('b.warehouse_node_id','f.name','i.unit')
+            ->orderBy('f.name')->orderBy('b.warehouse_node_id')->orderBy('i.unit')
+            ->limit(15001)->get();
+        abort_if($warehouseUnitRows->count() > 15000, 413, 'Too many warehouse/unit groups; narrow the report');
+        $stock = $warehouseUnitRows->groupBy('id')->map(static function ($group): array {
+            $first = $group->first();
+            $units = $group->map(static fn ($item): array => [
+                'unit'=>(string)$item->unit,
+                'items'=>(int)$item->items,
+                'quantity_milli'=>(int)$item->quantity_milli,
+            ])->values()->all();
+            return [
+                'id'=>$first->id,'name'=>$first->name,
+                'items'=>(int)$group->sum('items'),
+                // Compatibility for older clients: null rather than a misleading
+                // numeric total when warehouse contains different units.
+                'unit'=>count($units) === 1 ? $units[0]['unit'] : null,
+                'quantity_milli'=>count($units) === 1 ? $units[0]['quantity_milli'] : null,
+                'unit_quantities'=>$units,
+            ];
+        })->values()->all();
+        abort_if(count($stock) > 3000, 413, 'Too many warehouses; narrow the report');
         $lowStock = DB::table('stock_items as i')->where('i.company_id', $company->id)
             ->where('i.is_active', true)->leftJoin('stock_balances as b', function ($join) {
                 $join->on('b.stock_item_id','=','i.id')->on('b.company_id','=','i.company_id');
@@ -113,9 +138,14 @@ final class InventoryReportController extends Controller
                 foreach ($report['assets'][$key] as $row) $write([$row['id'],$row['name'] ?? 'Unassigned',$row['total']]);
             }
             $write([]);
-            $write(['Warehouse','Items','Quantity / 1000']);
+            $write(['Warehouse','Items','Unit','Quantity']);
             foreach ($report['warehouses']['by_warehouse'] as $row) {
-                $write([$row['name'],$row['items'],number_format($row['quantity_milli']/1000,3,'.','')]);
+                foreach ($row['unit_quantities'] as $unit) {
+                    $write([
+                        $row['name'], $unit['items'], $unit['unit'],
+                        number_format($unit['quantity_milli']/1000,3,'.',''),
+                    ]);
+                }
             }
             $write([]);
             $write(['Stocktake status','Sessions','Expected','Counted','Discrepancies']);
