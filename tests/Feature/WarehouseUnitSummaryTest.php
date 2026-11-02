@@ -83,7 +83,6 @@ final class WarehouseUnitSummaryTest extends TestCase
         $csv=$this->get($root.'.csv')->assertOk();
         $text=$csv->streamedContent();
         $this->assertStringContainsString('Warehouse;Items;Unit;Quantity',$text);
-        $this->assertStringContainsString('SKU', 'SKU'); // avoid relying on a locale-specific decimal separator
         $this->assertStringContainsString('kg;7.500',$text);
         $this->assertStringContainsString('pcs;4.000',$text);
         $this->assertStringContainsString('l;2.000',$text);
