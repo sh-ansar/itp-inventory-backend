@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Domain\Inventory\CompanyAccess;
+use App\Domain\Inventory\MultiAssetFilters;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use Illuminate\Http\JsonResponse;
@@ -22,19 +23,12 @@ final class InventoryReportController extends Controller
                 Rule::exists('facility_nodes','id')->where('company_id',$company->id)],
             'responsible_person_id' => ['nullable','uuid',
                 Rule::exists('responsible_people','id')->where('company_id',$company->id)],
+            ...MultiAssetFilters::rules($company),
         ]);
         $base = DB::table('assets as a')
             ->where('a.company_id', $company->id)
             ->whereNull('a.deleted_at');
-        if (! empty($filters['status'])) {
-            $base->where('a.status', $filters['status']);
-        }
-        if (! empty($filters['facility_node_id'])) {
-            $base->where('a.facility_node_id', $filters['facility_node_id']);
-        }
-        if (! empty($filters['responsible_person_id'])) {
-            $base->where('a.responsible_person_id', $filters['responsible_person_id']);
-        }
+        MultiAssetFilters::apply($base, $company, $filters, false, 'a.');
         $group = static function ($query, string $id, string $name): array {
             $rows = $query->selectRaw($id.' as id, '.$name.' as name, COUNT(*) as total')
                 ->groupBy($id, $name)->orderByDesc('total')->orderBy('name')
