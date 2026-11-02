@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\TablePreferenceController;
 use App\Http\Controllers\Api\InventoryReportController;
+use App\Http\Controllers\Api\InventoryPrintReportController;
 use App\Http\Controllers\Api\AccountingIntegrationController;
 use App\Http\Controllers\Api\CompanyMemberController;
 use App\Http\Controllers\Api\StocktakeDocumentController;
@@ -57,6 +58,7 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('/preferences/{view}', [TablePreferenceController::class, 'destroy']);
             Route::get('/reports/summary', [InventoryReportController::class, 'summary']);
             Route::get('/reports/summary.csv', [InventoryReportController::class, 'csv']);
+            Route::get('/reports/forms/{kind}', [InventoryPrintReportController::class, 'show']);
             Route::get('/inventory-sessions', [InventorySessionController::class, 'index']);
             Route::post('/inventory-sessions', [InventorySessionController::class, 'store']);
             Route::get('/inventory-sessions/{session}', [InventorySessionController::class, 'show']);
