@@ -68,7 +68,7 @@ final class RoleMatrixAcceptanceTest extends TestCase
                 $this->postJson($base.'/facility-nodes',[])->assertUnprocessable();
                 $this->postJson($base.'/inventory-sessions',[])->assertUnprocessable();
                 $this->postJson($base.'/stock-items',[])->assertUnprocessable();
-                $this->deleteJson($base.'/assets/'.$unknownAsset)->assertNotFound();
+                $this->deleteJson($base.'/assets/'.$unknownAsset)->assertUnprocessable();
                 $this->postJson($base.'/assets/'.$unknownAsset.'/disposal-case/approve',[])
                     ->assertUnprocessable();
                 $this->postJson($base.'/inventory-sessions/'.$unknownSession.'/reopen',[])
