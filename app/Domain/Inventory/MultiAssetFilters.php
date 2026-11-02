@@ -3,9 +3,6 @@
 namespace App\Domain\Inventory;
 
 use App\Models\Company;
-use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
-use Illuminate\Database\Query\Builder as QueryBuilder;
-use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 /**
@@ -32,7 +29,7 @@ final class MultiAssetFilters
     }
 
     public static function apply(
-        EloquentBuilder|QueryBuilder $query, Company $company, array $filters,
+        $query, Company $company, array $filters,
         bool $descendants = false, string $prefix = ''
     ): void {
         $statuses = self::selected($filters, 'statuses', 'status');
