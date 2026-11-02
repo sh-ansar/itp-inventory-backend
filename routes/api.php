@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AssetController;
+use App\Http\Controllers\Api\TablePreferenceController;
+use App\Http\Controllers\Api\InventoryReportController;
+use App\Http\Controllers\Api\AccountingIntegrationController;
 use App\Http\Controllers\Api\CompanyMemberController;
 use App\Http\Controllers\Api\StocktakeDocumentController;
 use App\Http\Controllers\Api\StocktakeXlsxController;
@@ -23,6 +26,19 @@ Route::prefix('v1')->group(function (): void {
         'service' => 'itp-inventory-api',
         'browser_login' => (bool) config('inventory.browser_login_enabled'),
     ]));
+    // Service-to-service API: no session cookies, disabled by default, company-scoped keys.
+    Route::prefix('external/companies/{company}')->middleware('throttle:60,1')->group(function (): void {
+        Route::get('/metadata', [AccountingIntegrationController::class, 'metadata'])
+            ->middleware('inventory.integration:assets:read');
+        Route::get('/assets', [AccountingIntegrationController::class, 'assets'])
+            ->middleware('inventory.integration:assets:read');
+        Route::get('/references', [AccountingIntegrationController::class, 'references'])
+            ->middleware('inventory.integration:references:read');
+        Route::get('/stock', [AccountingIntegrationController::class, 'stock'])
+            ->middleware('inventory.integration:stock:read');
+        Route::post('/imports/preview', [AccountingIntegrationController::class, 'preview'])
+            ->middleware('inventory.integration:imports:preview');
+    });
     Route::middleware(['auth:sanctum', 'inventory.active-account'])->group(function (): void {
         Route::get('/me', fn () => response()->json([
             'id' => auth()->id(), 'name' => auth()->user()->name,
@@ -36,6 +52,11 @@ Route::prefix('v1')->group(function (): void {
         ));
 
         Route::prefix('companies/{company}')->group(function (): void {
+            Route::get('/preferences/{view}', [TablePreferenceController::class, 'show']);
+            Route::put('/preferences/{view}', [TablePreferenceController::class, 'update']);
+            Route::delete('/preferences/{view}', [TablePreferenceController::class, 'destroy']);
+            Route::get('/reports/summary', [InventoryReportController::class, 'summary']);
+            Route::get('/reports/summary.csv', [InventoryReportController::class, 'csv']);
             Route::get('/inventory-sessions', [InventorySessionController::class, 'index']);
             Route::post('/inventory-sessions', [InventorySessionController::class, 'store']);
             Route::get('/inventory-sessions/{session}', [InventorySessionController::class, 'show']);

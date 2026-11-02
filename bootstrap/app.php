@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureBrowserLoginEnabled;
 use App\Http\Middleware\IsolatedXsrfCookie;
 use App\Http\Middleware\RequestCorrelationId;
+use App\Http\Middleware\VerifyInventoryIntegrationKey;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'inventory.browser-login' => EnsureBrowserLoginEnabled::class,
             'inventory.active-account' => EnsureActiveAccount::class,
+            'inventory.integration' => VerifyInventoryIntegrationKey::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
