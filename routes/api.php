@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AssetController;
+use App\Http\Controllers\Api\CompanyMemberController;
+use App\Http\Controllers\Api\StocktakeDocumentController;
+use App\Http\Controllers\Api\StocktakeXlsxController;
+use App\Http\Controllers\Api\AssetBulkController;
 use App\Http\Controllers\Api\AssetDisposalController;
 use App\Http\Controllers\Api\AssetMovementController;
 use App\Http\Controllers\Api\AssetQrController;
@@ -41,6 +45,14 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/inventory-sessions/{session}/complete', [InventorySessionController::class, 'complete']);
             Route::post('/inventory-sessions/{session}/reopen', [InventorySessionController::class, 'reopen']);
             Route::get('/inventory-sessions/{session}/events', [InventorySessionController::class, 'events']);
+            Route::get('/inventory-sessions/{session}/documents', [StocktakeDocumentController::class, 'index']);
+            Route::post('/inventory-sessions/{session}/documents', [StocktakeDocumentController::class, 'store']);
+            Route::get('/inventory-sessions/{session}/documents/{document}', [StocktakeDocumentController::class, 'download']);
+            Route::get('/members', [CompanyMemberController::class, 'index']);
+            Route::post('/members', [CompanyMemberController::class, 'store']);
+            Route::put('/members/{user}', [CompanyMemberController::class, 'update']);
+            Route::delete('/members/{user}', [CompanyMemberController::class, 'destroy']);
+            Route::get('/inventory-sessions/{session}/report.xlsx', [StocktakeXlsxController::class, 'export']);
             Route::get('/inventory-sessions/{session}/report.csv', [InventorySessionController::class, 'export']);
             Route::get('/stock-items', [WarehouseController::class, 'items']);
             Route::post('/stock-items', [WarehouseController::class, 'storeItem']);
@@ -73,6 +85,9 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/categories/{category}/icon', [EquipmentTypeController::class, 'icon']);
             Route::post('/locations', [AssetReferenceController::class, 'storeLocation']);
             Route::get('/disposal-cases', [AssetDisposalController::class, 'index']);
+            Route::get('/assets/export.xlsx', [AssetBulkController::class, 'export']);
+            Route::post('/assets/bulk-responsible', [AssetBulkController::class, 'update']);
+            Route::post('/assets/bulk-move', [AssetBulkController::class, 'move']);
             Route::get('/assets', [AssetController::class, 'index']);
             Route::get('/assets/scan/{publicId}', [AssetQrController::class, 'show']);
             Route::post('/assets', [AssetController::class, 'store']);
