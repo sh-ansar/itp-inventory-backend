@@ -71,7 +71,7 @@ final class AssetBulkController extends Controller
             'assets'=>['required','array','min:1','max:100'],
             'assets.*.id'=>['required','uuid','distinct'],
             'assets.*.version'=>['required','integer','min:1'],
-            'responsible_person_id'=>['required','nullable','uuid',
+            'responsible_person_id'=>['present','nullable','uuid',
                 Rule::exists('responsible_people','id')->where('company_id',$company->id)->where('is_active',true)],
             'reason'=>['required','string','min:5','max:1000'],
         ]);
