@@ -15,12 +15,12 @@ final class TablePreferenceController extends Controller
     private const VIEWS = [
         'assets' => ['inventory_number', 'name', 'category_name', 'facility_node_name',
             'responsible_person_name', 'physical_location_name', 'status', 'actions'],
-        'stocktakes' => ['name', 'status', 'progress', 'created_at', 'created_by_name', 'actions'],
+        'stocktakes' => ['name', 'status', 'progress', 'discrepancies', 'created_at', 'created_by_name', 'actions'],
         'disposals' => ['asset', 'name', 'status', 'order_number', 'documents', 'updated_at', 'actions'],
-        'warehouse_balances' => ['code', 'name', 'warehouse', 'quantity_milli', 'minimum_quantity_milli'],
-        'warehouse_items' => ['code', 'name', 'unit', 'minimum_quantity_milli', 'actions'],
-        'warehouse_history' => ['created_at', 'operation', 'item', 'quantity_milli', 'actor_name'],
-        'people' => ['name', 'employee_number', 'position', 'email', 'actions'],
+        'warehouse_balances' => ['code', 'name', 'quantity_milli', 'unit', 'minimum_quantity_milli'],
+        'warehouse_items' => ['code', 'name', 'unit', 'balances_sum_quantity_milli', 'minimum_quantity_milli', 'actions'],
+        'warehouse_history' => ['created_at', 'operation', 'stock_item_id', 'quantity_milli', 'actor_name', 'reason'],
+        'people' => ['code', 'name', 'position', 'email', 'source', 'is_active', 'assets_count', 'actions'],
     ];
 
     private const SORTABLE = [
@@ -64,10 +64,10 @@ final class TablePreferenceController extends Controller
         $view = $this->viewKey($view);
         $validColumns = self::VIEWS[$view];
         $values = $request->validate([
-            'settings' => ['required', 'array:search,status,facility_node_id,responsible_person_id,warehouse_node_id,per_page,sort_key,sort_direction,hidden_columns'],
+            'settings' => ['required', 'array:search,status,facility_node_id,responsible_person_id,warehouse_node_id,per_page,sort_key,sort_direction,hidden_columns,column_order'],
             'settings.search' => ['nullable', 'string', 'max:120'],
             'settings.status' => ['nullable', Rule::in(['', 'active', 'written_off', 'disposed', 'draft', 'submitted', 'approved',
-                'in_progress', 'completed'])],
+                'in_progress', 'completed', '1', '0'])],
             'settings.facility_node_id' => ['nullable','uuid',
                 Rule::exists('facility_nodes', 'id')->where('company_id', $company->id)],
             'settings.responsible_person_id' => ['nullable','uuid',
@@ -79,6 +79,8 @@ final class TablePreferenceController extends Controller
             'settings.sort_direction' => ['nullable', Rule::in(['asc', 'desc'])],
             'settings.hidden_columns' => ['sometimes', 'array', 'max:20'],
             'settings.hidden_columns.*' => ['string', 'distinct', Rule::in($validColumns)],
+            'settings.column_order' => ['sometimes', 'array', 'max:20'],
+            'settings.column_order.*' => ['string', 'distinct', Rule::in($validColumns)],
         ]);
         $settings = $values['settings'];
         // Critical columns and row actions cannot be hidden through preferences.
