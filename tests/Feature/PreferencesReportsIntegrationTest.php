@@ -151,4 +151,32 @@ final class PreferencesReportsIntegrationTest extends TestCase
             ->where('token_hash',hash('sha256',$secret))->update(['revoked_at'=>now()]);
         $this->withHeaders($header)->getJson($url.'/assets')->assertUnauthorized();
     }
+
+    public function test_operator_issues_expiring_token_and_can_revoke_only_matching_company_key(): void
+    {
+        $company=$this->company();
+        $foreign=$this->company();
+        $this->artisan('inventory:integration-key', [
+            'company'=>$company->id,'--system'=>'1c','--name'=>'Unit QA connector','--hours'=>24,
+        ])->assertExitCode(0);
+        $record=DB::table('inventory_integration_keys')->where('company_id',$company->id)->first();
+        $this->assertNotNull($record);
+        $this->assertSame(64,strlen($record->token_hash));
+        $this->assertSame('1c',$record->system_code);
+        $this->assertNull($record->revoked_at);
+        $this->assertTrue(\Illuminate\Support\Carbon::parse($record->expires_at)->isFuture());
+        $this->artisan('inventory:integration-key', [
+            'company'=>$foreign->id,'--revoke'=>$record->id,
+        ])->assertExitCode(1);
+        $this->assertNull(DB::table('inventory_integration_keys')->where('id',$record->id)->value('revoked_at'));
+        $this->artisan('inventory:integration-key', [
+            'company'=>$company->id,'--revoke'=>$record->id,
+        ])->assertExitCode(0);
+        $this->assertNotNull(DB::table('inventory_integration_keys')->where('id',$record->id)->value('revoked_at'));
+        $this->artisan('inventory:integration-key', [
+            'company'=>$company->id,'--system'=>'1c','--hours'=>9000,
+        ])->assertExitCode(1);
+        $this->assertDatabaseCount('inventory_integration_keys',1);
+    }
+
 }
