@@ -53,6 +53,11 @@ final class Company extends Model
         return $this->hasMany(ResponsiblePerson::class);
     }
 
+    public function industryCatalogItems(): HasMany
+    {
+        return $this->hasMany(IndustryCatalogItem::class);
+    }
+
     public function stockItems(): HasMany
     {
         return $this->hasMany(StockItem::class);
