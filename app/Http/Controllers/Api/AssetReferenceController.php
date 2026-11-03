@@ -78,7 +78,7 @@ final class AssetReferenceController extends Controller
             throw ValidationException::withMessages(['name' => ['Location already exists in this company and kind']]);
         }
         $location = $company->assetLocations()->create([
-            ...$data, 'id' => (string) Str::uuid(),
+            ...$data, 'id' => (string) Str::uuid(), 'normalized_name' => $normalized,
         ]);
 
         return response()->json($location->only(['id', 'kind', 'code', 'name']), 201);
@@ -102,6 +102,7 @@ final class AssetReferenceController extends Controller
                 throw ValidationException::withMessages(['name' => ['Location already exists in this company and kind']]);
             }
             $row->name = trim($data['name']);
+            $row->normalized_name = $normalized;
             if ($row->isDirty()) {
                 $row->version++;
                 $row->save();
