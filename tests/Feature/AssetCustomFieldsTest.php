@@ -31,8 +31,12 @@ final class AssetCustomFieldsTest extends TestCase
             'category_id'=>$cat,'code'=>'ram_gb','label_ru'=>'Duplicate',
             'field_type'=>'number',
         ])->assertUnprocessable()->assertJsonValidationErrors('code');
+        $this->postJson($root.'/assets',[
+            'inventory_number'=>'LAP-1','name'=>'Laptop','category_id'=>$cat,
+        ])->assertUnprocessable()->assertJsonValidationErrors('attributes.'.$f['id']);
         $asset=$this->postJson($root.'/assets',[
             'inventory_number'=>'LAP-1','name'=>'Laptop','category_id'=>$cat,
+            'attributes'=>[$f['id']=>16],
         ])->assertCreated()->json('data');
         $this->putJson($root.'/assets/'.$asset['id'].'/attributes',[
             'version'=>$asset['version'],'values'=>[$f['id']=>'invalid'],
