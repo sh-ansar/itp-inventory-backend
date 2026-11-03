@@ -43,20 +43,33 @@ abstract class AssetDataRequest extends FormRequest
         if ($ignoreId) {
             $unique->ignore($ignoreId, 'id');
         }
+        // Existing assets may keep their historical archived references, but
+        // no new asset or reassignment may select an archived dictionary value.
+        $current = $ignoreId ? $company->assets()->whereKey($ignoreId)->first() : null;
+        $referenceRule = function (string $table, string $field, ?string $kind = null) use ($company, $current) {
+            return Rule::exists($table, 'id')->where(function ($query) use ($company, $current, $field, $kind) {
+                $query->where('company_id', $company->id);
+                if ($kind !== null) $query->where('kind', $kind);
+                $query->where(function ($q) use ($current, $field) {
+                    $q->where('is_active', true);
+                    if ($current?->{$field}) $q->orWhere('id', $current->{$field});
+                });
+            });
+        };
 
         return [
             'inventory_number' => ['required', 'string', 'min:1', 'max:100', $unique],
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'serial_number' => ['nullable', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:3000'],
-            'category_id' => ['nullable', 'uuid', Rule::exists('asset_categories', 'id')->where('company_id', $company->id)],
+            'category_id' => ['nullable', 'uuid', $referenceRule('asset_categories', 'category_id')],
             'facility_node_id' => ['nullable', 'uuid', Rule::exists('facility_nodes', 'id')->where('company_id', $company->id)],
             'responsible_person_id' => ['nullable', 'uuid', Rule::exists('responsible_people', 'id')
                 ->where('company_id', $company->id)->where('is_active', true)],
             'accounting_location_id' => ['nullable', 'uuid',
-                Rule::exists('asset_locations', 'id')->where(fn ($q) => $q->where('company_id', $company->id)->where('kind', 'accounting'))],
+                $referenceRule('asset_locations', 'accounting_location_id', 'accounting'))],
             'physical_location_id' => ['nullable', 'uuid',
-                Rule::exists('asset_locations', 'id')->where(fn ($q) => $q->where('company_id', $company->id)->where('kind', 'physical'))],
+                $referenceRule('asset_locations', 'physical_location_id', 'physical'))],
         ];
     }
 }
