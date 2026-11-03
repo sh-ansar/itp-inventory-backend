@@ -65,9 +65,20 @@ final class ReferenceLifecycleTest extends TestCase
         $this->postJson('/api/v1/companies/'.$two->id.'/categories/'.$cat.'/archive', [
             'version' => 1,
         ])->assertForbidden();
+        $asset = $this->postJson('/api/v1/companies/'.$one->id.'/assets', [
+            'inventory_number' => 'INV-01', 'name' => 'Existing machinery', 'category_id' => $cat,
+        ])->assertCreated()->json('data');
         $this->postJson('/api/v1/companies/'.$one->id.'/categories/'.$cat.'/archive', [
             'version' => 1,
         ])->assertOk()->assertJsonPath('data.is_active', false);
+        $this->postJson('/api/v1/companies/'.$one->id.'/assets', [
+            'inventory_number' => 'INV-02', 'name' => 'New machinery', 'category_id' => $cat,
+        ])->assertUnprocessable()->assertJsonValidationErrors('category_id');
+        $this->putJson('/api/v1/companies/'.$one->id.'/assets/'.$asset['id'], [
+            'version' => $asset['version'], 'inventory_number' => $asset['inventory_number'],
+            'name' => 'Existing machinery updated', 'category_id' => $cat,
+        ])->assertOk();
+
         $this->getJson('/api/v1/companies/'.$one->id.'/reference-data?include_archived=1')
             ->assertJsonPath('categories.0.is_active', false);
     }
