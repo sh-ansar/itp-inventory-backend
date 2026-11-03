@@ -58,6 +58,7 @@ final class EquipmentTypeController extends Controller
         $result = DB::transaction(function () use ($company, $model, $data, $normalized) {
             $locked = $company->assetCategories()->whereKey($model->id)->lockForUpdate()->firstOrFail();
             abort_unless($locked->version === $data['version'], 409, 'Equipment type changed; reload');
+            abort_unless($locked->is_active, 409, 'Cannot modify archived reference');
             $locked->fill([
                 'name' => trim($data['name']),
                 'normalized_name' => $normalized,
