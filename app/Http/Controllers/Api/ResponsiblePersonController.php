@@ -22,6 +22,17 @@ final class ResponsiblePersonController extends Controller
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'position' => ['nullable', 'string', 'max:200'],
             'email' => ['nullable', 'email:rfc', 'max:255'],
+            'department_id' => ['nullable', 'uuid', Rule::exists('industry_catalog_items', 'id')
+                ->where(function ($q) use ($company, $id) {
+                    $q->where('company_id', $company->id)->where('kind', 'department')
+                        ->where(function ($nested) use ($company, $id) {
+                            $nested->where('is_active', true);
+                            if ($id && ($person = $company->responsiblePeople()->whereKey($id)->first())
+                                && $person->department_id) {
+                                $nested->orWhere('id', $person->department_id);
+                            }
+                        });
+                })],
             'is_active' => ['sometimes', 'boolean'],
             ...($id ? ['version' => ['required', 'integer', 'min:1']] : []),
         ];
