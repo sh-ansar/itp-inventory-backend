@@ -38,6 +38,13 @@ final class AssetCustomFieldsTest extends TestCase
             'inventory_number'=>'LAP-1','name'=>'Laptop','category_id'=>$cat,
             'attributes'=>[$f['id']=>16],
         ])->assertCreated()->json('data');
+        $this->putJson($root.'/assets/'.$asset['id'],[
+            'version'=>$asset['version'],'inventory_number'=>'LAP-1',
+            'name'=>'Laptop Updated','category_id'=>$cat,
+            'attributes'=>[$f['id']=>'not-number'],
+        ])->assertUnprocessable()->assertJsonValidationErrors('attributes.'.$f['id']);
+        $this->getJson($root.'/assets/'.$asset['id'])->assertOk()
+            ->assertJsonPath('data.name','Laptop');
         $this->putJson($root.'/assets/'.$asset['id'].'/attributes',[
             'version'=>$asset['version'],'values'=>[$f['id']=>'invalid'],
         ])->assertUnprocessable();
