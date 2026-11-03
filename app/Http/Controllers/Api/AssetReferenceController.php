@@ -26,7 +26,7 @@ final class AssetReferenceController extends Controller
                     .'/categories/'.$category->id.'/icon' : null,
             ]),
             'accounting_locations' => $company->assetLocations()->where('kind', 'accounting')->orderBy('name')->get(['id', 'code', 'name', 'is_active', 'version']),
-            'physical_locations' => $company->assetLocations()->where('kind', 'physical')->orderBy('name')->get(['id', 'code', 'name']),
+            'physical_locations' => $company->assetLocations()->where('kind', 'physical')->orderBy('name')->get(['id', 'code', 'name', 'is_active', 'version']),
         ]);
     }
 
