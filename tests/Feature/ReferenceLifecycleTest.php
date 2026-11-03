@@ -39,8 +39,10 @@ final class ReferenceLifecycleTest extends TestCase
         $this->postJson($prefix.'/locations/'.$location.'/archive', [
             'version' => 2,
         ])->assertOk()->assertJsonPath('data.is_active', false);
-        $this->getJson($prefix.'/reference-data')->assertOk()
+        $this->getJson($prefix.'/reference-data?include_archived=1')->assertOk()
             ->assertJsonPath('physical_locations.0.is_active', false);
+        $this->getJson($prefix.'/reference-data')->assertOk()
+            ->assertJsonCount(0, 'physical_locations');
         $this->postJson($prefix.'/locations/'.$location.'/archive', [
             'version' => 3,
         ])->assertStatus(409);
@@ -66,7 +68,7 @@ final class ReferenceLifecycleTest extends TestCase
         $this->postJson('/api/v1/companies/'.$one->id.'/categories/'.$cat.'/archive', [
             'version' => 1,
         ])->assertOk()->assertJsonPath('data.is_active', false);
-        $this->getJson('/api/v1/companies/'.$one->id.'/reference-data')
+        $this->getJson('/api/v1/companies/'.$one->id.'/reference-data?include_archived=1')
             ->assertJsonPath('categories.0.is_active', false);
     }
 }
