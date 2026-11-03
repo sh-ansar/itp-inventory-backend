@@ -8,7 +8,7 @@ final class AssetLocation extends Model
 {
     public $incrementing = false;
     protected $keyType = 'string';
-    protected $fillable = ['id', 'kind', 'code', 'name', 'is_active'];
+    protected $fillable = ['id', 'kind', 'code', 'name', 'normalized_name', 'is_active'];
     protected function casts(): array
     {
         return ['is_active' => 'boolean', 'version' => 'integer'];
