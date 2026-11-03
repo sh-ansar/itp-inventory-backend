@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\WarehouseController;
 use App\Http\Controllers\Api\IndustryCatalogController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\AssetFieldController;
+use App\Http\Controllers\Api\CompanyConfigurationController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -109,6 +110,12 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/industry-catalogs/{kind}', [IndustryCatalogController::class, 'store']);
             Route::put('/industry-catalogs/{kind}/{item}', [IndustryCatalogController::class, 'update']);
             Route::post('/industry-catalogs/{kind}/{item}/archive', [IndustryCatalogController::class, 'archive']);
+            Route::get('/configuration', [CompanyConfigurationController::class, 'settings']);
+            Route::put('/configuration', [CompanyConfigurationController::class, 'saveSettings']);
+            Route::get('/document-templates', [CompanyConfigurationController::class, 'templates']);
+            Route::post('/document-templates', [CompanyConfigurationController::class, 'createTemplate']);
+            Route::post('/document-templates/{template}/publish', [CompanyConfigurationController::class, 'publish']);
+            Route::post('/document-templates/{template}/preview', [CompanyConfigurationController::class, 'preview']);
             Route::get('/asset-fields', [AssetFieldController::class, 'index']);
             Route::post('/asset-fields', [AssetFieldController::class, 'store']);
             Route::put('/asset-fields/{field}', [AssetFieldController::class, 'update']);
