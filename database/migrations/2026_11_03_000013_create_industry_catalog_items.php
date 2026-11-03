@@ -12,10 +12,11 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('company_id')->constrained('companies')->restrictOnDelete();
             $table->string('kind', 24);
-            $table->string('code', 16);
+            $table->string('code', 80);
             $table->string('name', 200);
             $table->string('normalized_name', 200);
             $table->uuid('parent_id')->nullable();
+            $table->string('parent_key', 40)->default('root');
             $table->string('source', 16)->default('manual');
             $table->string('external_id', 100)->nullable();
             $table->unsignedTinyInteger('precision')->nullable();
@@ -23,7 +24,7 @@ return new class extends Migration
             $table->unsignedInteger('version')->default(1);
             $table->timestamps();
             $table->unique(['company_id','kind','code'], 'industry_catalog_company_kind_code_uniq');
-            $table->unique(['company_id','kind','normalized_name','parent_id'], 'industry_catalog_company_name_parent_uniq');
+            $table->unique(['company_id','kind','normalized_name','parent_key'], 'industry_catalog_company_name_parent_uniq');
             $table->unique(['id','company_id'], 'industry_catalog_company_fk_target');
             $table->foreign(['parent_id','company_id'], 'industry_catalog_parent_company_fk')
                 ->references(['id','company_id'])->on('industry_catalog_items')->restrictOnDelete();
