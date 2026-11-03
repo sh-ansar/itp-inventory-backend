@@ -52,7 +52,9 @@ abstract class AssetDataRequest extends FormRequest
                 if ($kind !== null) $query->where('kind', $kind);
                 $query->where(function ($q) use ($current, $field) {
                     $q->where('is_active', true);
-                    if ($current?->{$field}) $q->orWhere('id', $current->{$field});
+                    if ($current !== null && $current->getAttribute($field)) {
+                        $q->orWhere('id', $current->getAttribute($field));
+                    }
                 });
             });
         };
@@ -67,9 +69,9 @@ abstract class AssetDataRequest extends FormRequest
             'responsible_person_id' => ['nullable', 'uuid', Rule::exists('responsible_people', 'id')
                 ->where('company_id', $company->id)->where('is_active', true)],
             'accounting_location_id' => ['nullable', 'uuid',
-                $referenceRule('asset_locations', 'accounting_location_id', 'accounting'))],
+                $referenceRule('asset_locations', 'accounting_location_id', 'accounting')],
             'physical_location_id' => ['nullable', 'uuid',
-                $referenceRule('asset_locations', 'physical_location_id', 'physical'))],
+                $referenceRule('asset_locations', 'physical_location_id', 'physical')],
         ];
     }
 }
