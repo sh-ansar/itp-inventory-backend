@@ -13,7 +13,7 @@ final class ResponsiblePerson extends Model
 
     protected $fillable = [
         'id', 'code', 'name', 'position', 'email',
-        'source', 'external_employee_id', 'is_active',
+        'source', 'external_employee_id', 'department_id', 'is_active',
     ];
 
     protected function casts(): array

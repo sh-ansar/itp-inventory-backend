@@ -19,6 +19,10 @@ use App\Http\Controllers\Api\FacilityPlanController;
 use App\Http\Controllers\Api\InventorySessionController;
 use App\Http\Controllers\Api\ResponsiblePersonController;
 use App\Http\Controllers\Api\WarehouseController;
+use App\Http\Controllers\Api\IndustryCatalogController;
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\AssetFieldController;
+use App\Http\Controllers\Api\CompanyConfigurationController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -44,6 +48,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/me', fn () => response()->json([
             'id' => auth()->id(), 'name' => auth()->user()->name,
         ]));
+        Route::get('/profile', [ProfileController::class, 'show']);
+        Route::put('/profile', [ProfileController::class, 'update']);
+        Route::put('/profile/password', [ProfileController::class, 'password'])->middleware('throttle:5,1');
         Route::get('/companies', fn () => response()->json(
             auth()->user()->companyMemberships()->with('company')->get()->map(fn ($membership) => [
                 'id' => $membership->company_id,
@@ -99,6 +106,21 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/responsible-people', [ResponsiblePersonController::class, 'index']);
             Route::post('/responsible-people', [ResponsiblePersonController::class, 'store']);
             Route::put('/responsible-people/{person}', [ResponsiblePersonController::class, 'update']);
+            Route::get('/industry-catalogs/{kind}', [IndustryCatalogController::class, 'index']);
+            Route::post('/industry-catalogs/{kind}', [IndustryCatalogController::class, 'store']);
+            Route::put('/industry-catalogs/{kind}/{item}', [IndustryCatalogController::class, 'update']);
+            Route::post('/industry-catalogs/{kind}/{item}/archive', [IndustryCatalogController::class, 'archive']);
+            Route::get('/configuration', [CompanyConfigurationController::class, 'settings']);
+            Route::put('/configuration', [CompanyConfigurationController::class, 'saveSettings']);
+            Route::get('/document-templates', [CompanyConfigurationController::class, 'templates']);
+            Route::post('/document-templates', [CompanyConfigurationController::class, 'createTemplate']);
+            Route::post('/document-templates/{template}/publish', [CompanyConfigurationController::class, 'publish']);
+            Route::post('/document-templates/{template}/preview', [CompanyConfigurationController::class, 'preview']);
+            Route::get('/asset-fields', [AssetFieldController::class, 'index']);
+            Route::post('/asset-fields', [AssetFieldController::class, 'store']);
+            Route::put('/asset-fields/{field}', [AssetFieldController::class, 'update']);
+            Route::get('/assets/{asset}/attributes', [AssetFieldController::class, 'values']);
+            Route::put('/assets/{asset}/attributes', [AssetFieldController::class, 'saveValues']);
             Route::get('/reference-data', [AssetReferenceController::class, 'index']);
             Route::post('/categories', [AssetReferenceController::class, 'storeCategory']);
             Route::get('/equipment-presets', [EquipmentTypeController::class, 'presets']);

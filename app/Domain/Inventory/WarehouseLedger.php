@@ -63,6 +63,7 @@ final class WarehouseLedger
             if ($warehouseCount !== count($warehouses)) {
                 throw ValidationException::withMessages(['warehouse_node_id' => ['Choose company-owned warehouses']]);
             }
+            IndustryCatalog::validateQuantityPrecision($company, $item->unit, (string) $data['quantity']);
             $quantity = self::milli((string) $data['quantity'], $item->unit);
             $now = now();
             foreach ($warehouses as $warehouse) {

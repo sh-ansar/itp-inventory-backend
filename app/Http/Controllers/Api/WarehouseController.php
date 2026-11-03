@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domain\Inventory\CompanyAccess;
 use App\Domain\Inventory\WarehouseLedger;
+use App\Domain\Inventory\IndustryCatalog;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use Illuminate\Http\JsonResponse;
@@ -43,11 +44,19 @@ final class WarehouseController extends Controller
             'code' => ['required', 'string', 'min:1', 'max:80',
                 Rule::unique('stock_items', 'code')->where('company_id', $company->id)],
             'name' => ['required', 'string', 'min:2', 'max:255'],
-            'unit' => ['required', Rule::in(WarehouseLedger::UNITS)],
+            'unit' => ['required', 'string', 'max:16', function ($attribute, $value, $fail) use ($company) {
+                if (IndustryCatalog::unitPrecision($company, (string) $value) === null) {
+                    $fail('Choose an active unit from this company');
+                }
+            }],
             'category_id' => ['nullable', 'uuid',
                 Rule::exists('asset_categories', 'id')->where('company_id', $company->id)],
             'minimum_quantity' => ['nullable', 'regex:/\A[0-9]{1,6}(?:\.[0-9]{1,3})?\z/D'],
         ]);
+        IndustryCatalog::validateQuantityPrecision(
+            $company, $data['unit'], (string) ($data['minimum_quantity'] ?? '0.000'),
+            'minimum_quantity'
+        );
         $minimum = WarehouseLedger::milli((string) ($data['minimum_quantity'] ?? '0.000'), $data['unit'], true);
         // A zero minimum is allowed even though transaction quantities must be positive.
         $model = $company->stockItems()->create([

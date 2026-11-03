@@ -20,7 +20,8 @@ final class Asset extends Model
     protected $fillable = [
         'id', 'public_id', 'inventory_number', 'name', 'serial_number',
         'description', 'category_id', 'accounting_location_id',
-        'physical_location_id', 'facility_node_id', 'responsible_person_id', 'status',
+        'physical_location_id', 'facility_node_id', 'responsible_person_id',
+        'manufacturer_id', 'model_id', 'status',
     ];
 
     protected function casts(): array
@@ -34,6 +35,16 @@ final class Asset extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function manufacturer(): BelongsTo
+    {
+        return $this->belongsTo(IndustryCatalogItem::class, 'manufacturer_id');
+    }
+
+    public function equipmentModel(): BelongsTo
+    {
+        return $this->belongsTo(IndustryCatalogItem::class, 'model_id');
     }
 
     public function category(): BelongsTo
