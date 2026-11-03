@@ -64,6 +64,7 @@ abstract class AssetDataRequest extends FormRequest
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'serial_number' => ['nullable', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:3000'],
+            'attributes' => ['sometimes','array','max:100'],
             'category_id' => ['nullable', 'uuid', $referenceRule('asset_categories', 'category_id')],
             'manufacturer_id' => ['nullable', 'required_with:model_id', 'uuid',
                 $referenceRule('industry_catalog_items', 'manufacturer_id', 'manufacturer')],
