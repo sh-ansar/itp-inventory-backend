@@ -69,8 +69,9 @@ final class AssetReferenceController extends Controller
                 ->where('company_id', $company->id)->where('kind', $data['kind'])],
         ]);
         $normalized = EquipmentTypes::normalize($data['name']);
-        $duplicate = $company->assetLocations()->where('kind', $data['kind'])
-            ->get(['name'])->contains(fn ($row) => EquipmentTypes::normalize($row->name) === $normalized);
+        $duplicate = DB::table('asset_locations')->where('company_id', $company->id)
+            ->where('kind', $data['kind'])->pluck('name')
+            ->contains(fn ($existing) => EquipmentTypes::normalize((string) $existing) === $normalized);
         if ($duplicate) {
             throw ValidationException::withMessages(['name' => ['Location already exists in this company and kind']]);
         }
@@ -92,9 +93,9 @@ final class AssetReferenceController extends Controller
             abort_unless($row->version === $data['version'], 409, 'Reference changed; reload');
             abort_unless($row->is_active, 409, 'Cannot edit archived reference');
             $normalized = EquipmentTypes::normalize($data['name']);
-            $duplicate = $company->assetLocations()->where('kind', $row->kind)
-                ->where('id', '!=', $row->id)->get(['name'])
-                ->contains(fn ($other) => EquipmentTypes::normalize($other->name) === $normalized);
+            $duplicate = DB::table('asset_locations')->where('company_id', $company->id)
+                ->where('kind', $row->kind)->where('id', '!=', $row->id)->pluck('name')
+                ->contains(fn ($other) => EquipmentTypes::normalize((string) $other) === $normalized);
             if ($duplicate) {
                 throw ValidationException::withMessages(['name' => ['Location already exists in this company and kind']]);
             }
