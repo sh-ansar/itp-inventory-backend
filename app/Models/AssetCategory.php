@@ -10,10 +10,10 @@ final class AssetCategory extends Model
 
     protected $keyType = 'string';
 
-    protected $fillable = ['id', 'code', 'name', 'normalized_name', 'icon_key', 'icon_path', 'base_key', 'is_base'];
+    protected $fillable = ['id', 'code', 'name', 'normalized_name', 'icon_key', 'icon_path', 'base_key', 'is_base', 'is_active'];
 
     protected function casts(): array
     {
-        return ['is_base' => 'boolean', 'version' => 'integer'];
+        return ['is_base' => 'boolean', 'is_active' => 'boolean', 'version' => 'integer'];
     }
 }
