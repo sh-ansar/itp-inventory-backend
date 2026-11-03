@@ -107,6 +107,9 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/categories/{category}/icon', [EquipmentTypeController::class, 'uploadIcon']);
             Route::get('/categories/{category}/icon', [EquipmentTypeController::class, 'icon']);
             Route::post('/locations', [AssetReferenceController::class, 'storeLocation']);
+            Route::put('/locations/{location}', [AssetReferenceController::class, 'updateLocation']);
+            Route::post('/locations/{location}/archive', [AssetReferenceController::class, 'archiveLocation']);
+            Route::post('/categories/{category}/archive', [AssetReferenceController::class, 'archiveCategory']);
             Route::get('/disposal-cases', [AssetDisposalController::class, 'index']);
             Route::get('/assets/export.xlsx', [AssetBulkController::class, 'export']);
             Route::post('/assets/bulk-responsible', [AssetBulkController::class, 'update']);
