@@ -18,15 +18,17 @@ final class AssetReferenceController extends Controller
     public function index(Request $request, Company $company, CompanyAccess $access): JsonResponse
     {
         $access->member($request, $company);
+        $includeArchived = $request->boolean('include_archived');
+        $activeOnly = fn ($query) => $includeArchived ? $query : $query->where('is_active', true);
 
         return response()->json([
-            'categories' => $company->assetCategories()->orderBy('name')->get()->map(fn ($category) => [
+            'categories' => $activeOnly($company->assetCategories())->orderBy('name')->get()->map(fn ($category) => [
                 ...$category->only(['id', 'code', 'name', 'icon_key', 'is_base', 'is_active', 'version']),
                 'icon_url' => $category->icon_path ? '/inventory-api/api/v1/companies/'.$company->id
                     .'/categories/'.$category->id.'/icon' : null,
             ]),
-            'accounting_locations' => $company->assetLocations()->where('kind', 'accounting')->orderBy('name')->get(['id', 'code', 'name', 'is_active', 'version']),
-            'physical_locations' => $company->assetLocations()->where('kind', 'physical')->orderBy('name')->get(['id', 'code', 'name', 'is_active', 'version']),
+            'accounting_locations' => $activeOnly($company->assetLocations()->where('kind', 'accounting'))->orderBy('name')->get(['id', 'code', 'name', 'is_active', 'version']),
+            'physical_locations' => $activeOnly($company->assetLocations()->where('kind', 'physical'))->orderBy('name')->get(['id', 'code', 'name', 'is_active', 'version']),
         ]);
     }
 
