@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\ResponsiblePersonController;
 use App\Http\Controllers\Api\WarehouseController;
 use App\Http\Controllers\Api\IndustryCatalogController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\AssetFieldController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -108,6 +109,11 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/industry-catalogs/{kind}', [IndustryCatalogController::class, 'store']);
             Route::put('/industry-catalogs/{kind}/{item}', [IndustryCatalogController::class, 'update']);
             Route::post('/industry-catalogs/{kind}/{item}/archive', [IndustryCatalogController::class, 'archive']);
+            Route::get('/asset-fields', [AssetFieldController::class, 'index']);
+            Route::post('/asset-fields', [AssetFieldController::class, 'store']);
+            Route::put('/asset-fields/{field}', [AssetFieldController::class, 'update']);
+            Route::get('/assets/{asset}/attributes', [AssetFieldController::class, 'values']);
+            Route::put('/assets/{asset}/attributes', [AssetFieldController::class, 'saveValues']);
             Route::get('/reference-data', [AssetReferenceController::class, 'index']);
             Route::post('/categories', [AssetReferenceController::class, 'storeCategory']);
             Route::get('/equipment-presets', [EquipmentTypeController::class, 'presets']);
