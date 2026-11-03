@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -20,11 +21,11 @@ final class AssetReferenceController extends Controller
 
         return response()->json([
             'categories' => $company->assetCategories()->orderBy('name')->get()->map(fn ($category) => [
-                ...$category->only(['id', 'code', 'name', 'icon_key', 'is_base', 'version']),
+                ...$category->only(['id', 'code', 'name', 'icon_key', 'is_base', 'is_active', 'version']),
                 'icon_url' => $category->icon_path ? '/inventory-api/api/v1/companies/'.$company->id
                     .'/categories/'.$category->id.'/icon' : null,
             ]),
-            'accounting_locations' => $company->assetLocations()->where('kind', 'accounting')->orderBy('name')->get(['id', 'code', 'name']),
+            'accounting_locations' => $company->assetLocations()->where('kind', 'accounting')->orderBy('name')->get(['id', 'code', 'name', 'is_active', 'version']),
             'physical_locations' => $company->assetLocations()->where('kind', 'physical')->orderBy('name')->get(['id', 'code', 'name']),
         ]);
     }
@@ -49,7 +50,7 @@ final class AssetReferenceController extends Controller
         $category = $company->assetCategories()->create([
             ...$data, 'id' => (string) Str::uuid(),
             'normalized_name' => $normalized, 'icon_key' => $data['icon_key'] ?? 'box',
-            'is_base' => false, 'version' => 1,
+            'is_base' => false, 'is_active' => true, 'version' => 1,
         ]);
 
         return response()->json($category->only(['id', 'code', 'name', 'icon_key', 'is_base', 'version']), 201);
@@ -67,10 +68,76 @@ final class AssetReferenceController extends Controller
             'code' => [Rule::unique('asset_locations', 'code')
                 ->where('company_id', $company->id)->where('kind', $data['kind'])],
         ]);
+        $normalized = EquipmentTypes::normalize($data['name']);
+        $duplicate = $company->assetLocations()->where('kind', $data['kind'])
+            ->get(['name'])->contains(fn ($row) => EquipmentTypes::normalize($row->name) === $normalized);
+        if ($duplicate) {
+            throw ValidationException::withMessages(['name' => ['Location already exists in this company and kind']]);
+        }
         $location = $company->assetLocations()->create([
             ...$data, 'id' => (string) Str::uuid(),
         ]);
 
         return response()->json($location->only(['id', 'kind', 'code', 'name']), 201);
     }
+    public function updateLocation(Request $request, Company $company, string $location, CompanyAccess $access): JsonResponse
+    {
+        $access->canWrite($request, $company);
+        $data = $request->validate([
+            'version' => ['required', 'integer', 'min:1'],
+            'name' => ['required', 'string', 'min:2', 'max:200'],
+        ]);
+        $model = DB::transaction(function () use ($company, $location, $data) {
+            $row = $company->assetLocations()->whereKey($location)->lockForUpdate()->firstOrFail();
+            abort_unless($row->version === $data['version'], 409, 'Reference changed; reload');
+            abort_unless($row->is_active, 409, 'Cannot edit archived reference');
+            $normalized = EquipmentTypes::normalize($data['name']);
+            $duplicate = $company->assetLocations()->where('kind', $row->kind)
+                ->where('id', '!=', $row->id)->get(['name'])
+                ->contains(fn ($other) => EquipmentTypes::normalize($other->name) === $normalized);
+            if ($duplicate) {
+                throw ValidationException::withMessages(['name' => ['Location already exists in this company and kind']]);
+            }
+            $row->name = trim($data['name']);
+            if ($row->isDirty()) {
+                $row->version++;
+                $row->save();
+            }
+            return $row->refresh();
+        }, 3);
+        return response()->json(['data' => $model]);
+    }
+
+    public function archiveLocation(Request $request, Company $company, string $location, CompanyAccess $access): JsonResponse
+    {
+        $access->canWrite($request, $company);
+        $data = $request->validate(['version' => ['required', 'integer', 'min:1']]);
+        $model = DB::transaction(function () use ($company, $location, $data) {
+            $row = $company->assetLocations()->whereKey($location)->lockForUpdate()->firstOrFail();
+            abort_unless($row->version === $data['version'], 409, 'Reference changed; reload');
+            abort_unless($row->is_active, 409, 'Already archived');
+            $row->is_active = false;
+            $row->version++;
+            $row->save();
+            return $row->refresh();
+        }, 3);
+        return response()->json(['data' => $model]);
+    }
+
+    public function archiveCategory(Request $request, Company $company, string $category, CompanyAccess $access): JsonResponse
+    {
+        $access->canWrite($request, $company);
+        $data = $request->validate(['version' => ['required', 'integer', 'min:1']]);
+        $model = DB::transaction(function () use ($company, $category, $data) {
+            $row = $company->assetCategories()->whereKey($category)->lockForUpdate()->firstOrFail();
+            abort_unless($row->version === $data['version'], 409, 'Reference changed; reload');
+            abort_unless($row->is_active, 409, 'Already archived');
+            $row->is_active = false;
+            $row->version++;
+            $row->save();
+            return $row->refresh();
+        }, 3);
+        return response()->json(['data' => $model]);
+    }
+
 }
