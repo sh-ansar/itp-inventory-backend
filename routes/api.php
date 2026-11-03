@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\InventorySessionController;
 use App\Http\Controllers\Api\ResponsiblePersonController;
 use App\Http\Controllers\Api\WarehouseController;
 use App\Http\Controllers\Api\IndustryCatalogController;
+use App\Http\Controllers\Api\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -45,6 +46,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/me', fn () => response()->json([
             'id' => auth()->id(), 'name' => auth()->user()->name,
         ]));
+        Route::get('/profile', [ProfileController::class, 'show']);
+        Route::put('/profile', [ProfileController::class, 'update']);
+        Route::put('/profile/password', [ProfileController::class, 'password'])->middleware('throttle:5,1');
         Route::get('/companies', fn () => response()->json(
             auth()->user()->companyMemberships()->with('company')->get()->map(fn ($membership) => [
                 'id' => $membership->company_id,
