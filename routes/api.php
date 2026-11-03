@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\FacilityPlanController;
 use App\Http\Controllers\Api\InventorySessionController;
 use App\Http\Controllers\Api\ResponsiblePersonController;
 use App\Http\Controllers\Api\WarehouseController;
+use App\Http\Controllers\Api\IndustryCatalogController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -99,6 +100,10 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/responsible-people', [ResponsiblePersonController::class, 'index']);
             Route::post('/responsible-people', [ResponsiblePersonController::class, 'store']);
             Route::put('/responsible-people/{person}', [ResponsiblePersonController::class, 'update']);
+            Route::get('/industry-catalogs/{kind}', [IndustryCatalogController::class, 'index']);
+            Route::post('/industry-catalogs/{kind}', [IndustryCatalogController::class, 'store']);
+            Route::put('/industry-catalogs/{kind}/{item}', [IndustryCatalogController::class, 'update']);
+            Route::post('/industry-catalogs/{kind}/{item}/archive', [IndustryCatalogController::class, 'archive']);
             Route::get('/reference-data', [AssetReferenceController::class, 'index']);
             Route::post('/categories', [AssetReferenceController::class, 'storeCategory']);
             Route::get('/equipment-presets', [EquipmentTypeController::class, 'presets']);
