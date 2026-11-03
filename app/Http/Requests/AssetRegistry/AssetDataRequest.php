@@ -65,6 +65,17 @@ abstract class AssetDataRequest extends FormRequest
             'serial_number' => ['nullable', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:3000'],
             'category_id' => ['nullable', 'uuid', $referenceRule('asset_categories', 'category_id')],
+            'manufacturer_id' => ['nullable', 'required_with:model_id', 'uuid',
+                $referenceRule('industry_catalog_items', 'manufacturer_id', 'manufacturer')],
+            'model_id' => ['nullable', 'uuid',
+                Rule::exists('industry_catalog_items', 'id')->where(function ($query) use ($company, $current) {
+                    $query->where('company_id', $company->id)->where('kind', 'model')
+                        ->where('parent_id', $this->input('manufacturer_id'))
+                        ->where(function ($q) use ($current) {
+                            $q->where('is_active', true);
+                            if ($current?->model_id) $q->orWhere('id', $current->model_id);
+                        });
+                })],
             'facility_node_id' => ['nullable', 'uuid', Rule::exists('facility_nodes', 'id')->where('company_id', $company->id)],
             'responsible_person_id' => ['nullable', 'uuid', Rule::exists('responsible_people', 'id')
                 ->where('company_id', $company->id)->where('is_active', true)],
