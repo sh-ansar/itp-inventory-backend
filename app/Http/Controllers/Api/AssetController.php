@@ -27,12 +27,12 @@ final class AssetController extends Controller
     private const EDITABLE = [
         'inventory_number', 'name', 'serial_number', 'description',
         'category_id', 'accounting_location_id', 'physical_location_id',
-        'facility_node_id', 'responsible_person_id',
+        'facility_node_id', 'responsible_person_id', 'manufacturer_id', 'model_id',
     ];
 
     private function scope(Company $company, string $id, bool $withTrashed = false): Asset
     {
-        $query = $company->assets()->with(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson'])
+        $query = $company->assets()->with(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson', 'manufacturer', 'equipmentModel'])
             ->withExists('disposalCase');
         if ($withTrashed) {
             $query->withTrashed();
@@ -61,7 +61,7 @@ final class AssetController extends Controller
             'per_page' => ['nullable', 'integer', Rule::in([10, 25, 50, 100])],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
-        $query = $company->assets()->with(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson'])
+        $query = $company->assets()->with(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson', 'manufacturer', 'equipmentModel'])
             ->withExists('disposalCase');
         if (! empty($params['search'])) {
             $term = mb_strtolower(trim($params['search']));
@@ -110,7 +110,7 @@ final class AssetController extends Controller
             return $asset;
         });
 
-        return (new AssetResource($model->load(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson'])))
+        return (new AssetResource($model->load(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson', 'manufacturer', 'equipmentModel'])))
             ->response()->setStatusCode(201);
     }
 
@@ -136,7 +136,7 @@ final class AssetController extends Controller
             return $model;
         });
 
-        return new AssetResource($model->load(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson']));
+        return new AssetResource($model->load(['category', 'accountingLocation', 'physicalLocation', 'facilityNode', 'responsiblePerson', 'manufacturer', 'equipmentModel']));
     }
 
     public function destroy(
