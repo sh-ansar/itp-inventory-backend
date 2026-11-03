@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Domain\Inventory\AssetAuditWriter;
+use App\Domain\Inventory\AssetFieldService;
 use App\Domain\Inventory\CompanyAccess;
 use App\Domain\Inventory\MultiAssetFilters;
 use App\Domain\Inventory\FacilityHierarchy;
@@ -97,7 +98,9 @@ final class AssetController extends Controller
     ): JsonResponse {
         $access->canWrite($request, $company);
         $values = Arr::only($request->validated(), self::EDITABLE);
-        $model = DB::transaction(function () use ($request, $company, $values, $audit): Asset {
+        $attributes = $request->validated('attributes', []);
+        app(AssetFieldService::class)->validate($company,$values['category_id']??null,$attributes);
+        $model = DB::transaction(function () use ($request, $company, $values, $audit, $attributes): Asset {
             $asset = $company->assets()->create([
                 ...$values,
                 'id' => (string) Str::uuid(),
@@ -105,7 +108,9 @@ final class AssetController extends Controller
                 'status' => 'active',
             ]);
             $asset->refresh(); // Database default version=1 is not populated on the in-memory model.
-            $audit->record($asset, $request->user(), 'created', null, $this->snapshot($asset));
+            app(AssetFieldService::class)->persist($asset,$attributes);
+            $audit->record($asset, $request->user(), 'created', null,
+                [...$this->snapshot($asset), 'attributes'=>$attributes]);
 
             return $asset;
         });
@@ -125,12 +130,20 @@ final class AssetController extends Controller
             abort_unless($model->version === $data['version'], 409, 'Asset was modified; reload before saving');
             abort_unless($model->status === 'active', 409,
                 'Written-off and disposed assets are locked against ordinary edits');
-            $before = $this->snapshot($model);
+            $attributesService = app(AssetFieldService::class);
+            $beforeAttributes=$attributesService->values($model);
+            $before = [...$this->snapshot($model),'attributes'=>$beforeAttributes];
             $model->fill(Arr::only($data, self::EDITABLE));
-            if ($model->isDirty()) {
+            $attributes=array_key_exists('attributes',$data) ? $data['attributes'] : null;
+            if($attributes!==null){
+                $attributesService->validate($company,$model->category_id,$attributes);
+                $attributesService->persist($model,$attributes);
+            }
+            if ($model->isDirty() || ($attributes!==null && $beforeAttributes!==$attributes)) {
                 $model->version++;
                 $model->save();
-                $audit->record($model, $request->user(), 'updated', $before, $this->snapshot($model));
+                $audit->record($model, $request->user(), 'updated', $before,
+                    [...$this->snapshot($model),'attributes'=>$attributesService->values($model)]);
             }
 
             return $model;
