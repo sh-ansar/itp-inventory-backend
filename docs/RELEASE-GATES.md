@@ -1,17 +1,36 @@
-# Inventory isolated release gates
+# Inventory — релизные критерии (действующая версия)
 
-This branch is deliberately not production-ready. All conditions below must pass before release:
+Этот gate применяется к **каждому** изменению Frontend, Backend, миграций или инфраструктуры. Он не означает автоматического разрешения деплоя после зелёного теста. Архитектура, процессы и восстановление: docs/ARCHITECTURE.md, docs/DEPLOYMENT.md и docs/OPERATIONS.md.
 
-1. Frontend and backend each published in separate intended GitHub repos. No secrets, vendor, build output, synthetic test DB or generated keys tracked.
-2. Provision PostgreSQL under new Inventory-only service/database role. Verify clean migrations, tenant-scoped FK constraints, rollback and restore from a disposable backup. Never use HRM/Portal production DB.
-3. Isolated Apache alias /inventory/ and backend proxy /inventory-api/ with independent PHP worker; no collisions with Portal, HRM, Unityre and ETP.
-4. Review APP_ENV=production, APP_DEBUG=false, HTTPS, trusted proxy headers, SESSION_SECURE_COOKIE=true, SESSION_HTTP_ONLY=true, same-site session and unique session/XSRF cookie names.
-5. Only then enable INVENTORY_BROWSER_LOGIN_ENABLED. QA login/logout, CSRF enforcement, blocking and revocation, expired sessions, parallel Portal/HRM sessions.
-6. Tenant/role matrix (nonmember, viewer, inventory_manager, company_admin) and injection of foreign reference IDs; pagination/search/optimistic edit conflict.
-7. Test authorized concurrency, rollback on failure, 10–20 simultaneous operations, and restore from snapshot.
-8. Mobile/tablet/desktop at 360/390/768/1440 widths and RU/EN/GE, dark/light, dialogs, keyboard focus, long names and zero page overflow.
-9. Verify QR label print dimensions, scanner link routing, company switching and 404 for foreign/archived assets; reject stale transfer versions, test movement history after archive and cross-company foreign keys.
-10. Reconcile the legacy Inventory functional flows and actual data: QR, movements, inventory counts, responsible persons, locations, disposal, 1C and exports. Do not claim real migration without source DB mapping.
-11. Deploy with an explicit rollback path, then smoke-test /inventory/ and /inventory-api/, inspect logs, and confirm Portal/HRM are unaffected.
+## Gate A — Git и изменения
 
-Known gaps: real legacy data transfer, inventory stocktakes, accounting transfers and movement approvals, in-app camera decoder, bulk QR printing, exports/imports, document attachments and SSO. Leave production configuration untouched until approved.
+- Отдельная feature/* ветка каждого репозитория, согласованные версии API.
+- PR с описанием бизнес-сценариев, ролей, миграций, привязкой к issue и rollback plan.
+- Review независимым разработчиком, отсутствие production секретов/DB/документов в diff.
+- PHPUnit и TypeScript/Vitest/build, Playwright smoke — зеленые. PostgreSQL CI должен быть зеленым при database-affecting change.
+
+## Gate B — модель данных и безопасность
+
+- Separate PostgreSQL database/role/storage + APP_KEY + уникальные cookies/XSRF, login rate limit.
+- Проверить multi-company 404, viewer 403, version conflict 409, CSRF 419 и validation 422.
+- Private files и QR не дают доступ по угадываемому URL; Audit event сохраняет actor/company/version.
+- Действия массового изменения атомарны, справочники уникальны внутри компании, неизвестная роль fail-closed.
+- ERP/1C integration disabled до независимой security review.
+
+## Gate C — подготовка выпуска
+
+- Release manifest с SHA, immutable каталогами, контрольными суммами, old/new junction и операторами.
+- PostgreSQL backup и проверенный restore rehearsal; REVIEW всех pending migrations через --pretend.
+- Проверка наличия vendor/autoload и **чистой собственной composer classmap**, без vendor junction на другой checkout.
+- Совместимость схемы с предыдущим API релизом, rollback plan до переключения.
+- Соседние HRM/Portal/ТОиР не затрагиваются.
+
+## Gate D — post-release
+
+- Проверены /inventory/, API health, /me 401 гостя, авторизованный /me и компании, один полный read/write workflow, UI под admin/manager/viewer.
+- Ошибки Laravel/HTTP и 5xx отсутствуют на контрольном окне, health соседних приложений PASS.
+- Утвержден change log, rollback и backup доступны. Release только после письменного QA sign-off.
+
+## Не объявлять готовым по одному smoke
+
+Историческая QA база SQLite и 330 visual screenshots подтверждают свои сценарии, но не заменяют тест PostgreSQL concurrency, restore, ACL файлов и отдельных ERP интеграций. Документацию текущего релиза и реальные release SHA обновлять вместе с выпуском.

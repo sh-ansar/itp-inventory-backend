@@ -1,10 +1,14 @@
-# ITP Inventory backend foundation
+# Inventory backend — архитектурные основы
 
-Independent Laravel 12 app for Inventory. Do not deploy on HRM or Portal runtime. Own browser session using Sanctum; **no SSO yet**.
+Исходный foundation (октябрь 2026) был существенно расширен: на 04.11.2026 реализованы инвентаризации, QR, МОЛ, склад, списание, отчеты, отраслевые справочники, динамические поля и настройки компании.
 
-- Browser endpoints: POST /auth/login, GET /auth/me, POST /auth/logout. The login feature is off by default `INVENTORY_BROWSER_LOGIN_ENABLED=false`. Laravel CSRF must remain enabled.
-- API: GET /api/v1/health (public), GET /api/v1/me (auth), GET and POST /api/v1/companies/{company}/assets (auth + membership).
-- Permissions: company_admin/inventory_manager can create assets; other company members can list. No anonymous registration.
-- Database: separate Inventory database on isolated PostgreSQL, local SQLite only for automated tests.
-- Deployment: separate frontend /inventory/ and API /inventory-api/ paths; do not touch the production Portal/HRM vhosts before approval.
-- Next iteration: forms, account activation, audit writer, stronger company access policy, inventory workflows, QR, and privacy-aware company directory integration.
+**Не используйте ранний список «Next iteration» как актуальный backlog.**
+
+Актуальные документы:
+- README.md — точка входа, сборка и изоляция.
+- docs/ARCHITECTURE.md — код, данные, безопасность и потоки.
+- docs/FUNCTIONAL-CATALOG.md — реализованные процессы и роли.
+- docs/DEPLOYMENT.md, docs/OPERATIONS.md — установка, release, backup/rollback и инциденты.
+- docs/RELEASE-GATES.md, docs/TESTING.md — quality gates.
+
+Инвариант, сохранившийся с foundation: Inventory — отдельный продукт Laravel 12 и собственная БД; никаких общих cookies, APP_KEY, директории storage или миграций Portal/HRM. Portal SSO пока **не реализован**; внешние интеграции выключены по умолчанию.

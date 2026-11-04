@@ -19,12 +19,12 @@ final class CompanyAccess
     public function canWrite(Request $request, Company $company): void
     {
         $member = $this->member($request, $company);
-        abort_unless(in_array($member->role_code, ['company_admin', 'inventory_manager'], true), 403);
+        abort_unless(CompanyRole::tryFrom((string) $member->role_code)?->canWrite() === true, 403);
     }
 
     public function canArchive(Request $request, Company $company): void
     {
         $member = $this->member($request, $company);
-        abort_unless($member->role_code === 'company_admin', 403);
+        abort_unless(CompanyRole::tryFrom((string) $member->role_code)?->canAdminister() === true, 403);
     }
 }
