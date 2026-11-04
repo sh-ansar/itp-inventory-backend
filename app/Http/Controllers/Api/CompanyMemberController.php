@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Domain\Inventory\CompanyAccess;
+use App\Domain\Inventory\CompanyRole;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\CompanyMembership;
@@ -31,7 +32,7 @@ final class CompanyMemberController extends Controller
         $access->canArchive($request,$company);
         $data=$request->validate([
             'email'=>['required','email','max:255'],
-            'role_code'=>['required',Rule::in(['viewer','inventory_manager','company_admin'])],
+            'role_code'=>['required',Rule::in(CompanyRole::values())],
             'reason'=>['required','string','min:5','max:1000'],
         ]);
         return DB::transaction(function () use ($request,$company,$data) {
@@ -64,8 +65,8 @@ final class CompanyMemberController extends Controller
             $member=$members->firstWhere('user_id',$user);
             abort_unless($member,404);
             abort_if($user===$request->user()->id,409,'Cannot revoke your own access');
-            abort_if($member->role_code==='company_admin' &&
-                $members->where('role_code','company_admin')->count()<=1,409,
+            abort_if($member->role_code===CompanyRole::Admin->value &&
+                $members->where('role_code',CompanyRole::Admin->value)->count()<=1,409,
                 'At least one company administrator must remain');
             $previous=$member->role_code;
             $member->delete();
@@ -83,7 +84,7 @@ final class CompanyMemberController extends Controller
     {
         $access->canArchive($request,$company);
         $data=$request->validate([
-            'role_code'=>['required',Rule::in(['viewer','inventory_manager','company_admin'])],
+            'role_code'=>['required',Rule::in(CompanyRole::values())],
             'reason'=>['required','string','min:5','max:1000'],
         ]);
         return DB::transaction(function () use ($request,$company,$user,$data) {
@@ -92,12 +93,12 @@ final class CompanyMemberController extends Controller
             $member=$members->firstWhere('user_id',$user);
             abort_unless($member,404);
             $before=$member->role_code;
-            if ($before==='company_admin' && $data['role_code']!=='company_admin'
-                && $members->where('role_code','company_admin')->count()<=1) {
+            if ($before===CompanyRole::Admin->value && $data['role_code']!==CompanyRole::Admin->value
+                && $members->where('role_code',CompanyRole::Admin->value)->count()<=1) {
                 throw ValidationException::withMessages(['role_code'=>['At least one company administrator must remain']]);
             }
-            if ($user===$request->user()->id && $before==='company_admin'
-                && $data['role_code']!=='company_admin') {
+            if ($user===$request->user()->id && $before===CompanyRole::Admin->value
+                && $data['role_code']!==CompanyRole::Admin->value) {
                 throw ValidationException::withMessages(['role_code'=>['Do not demote your own administrator access']]);
             }
             if ($before===$data['role_code']) return response()->json(['ok'=>true,'changed'=>false]);

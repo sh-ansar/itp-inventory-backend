@@ -1,10 +1,11 @@
 name: Inventory Laravel API
 on:
   push:
-    branches: ["main", "feat/**"]
+    branches: ["main", "feat/**", "feature/**"]
   pull_request:
+
 jobs:
-  phpunit:
+  phpunit-sqlite:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,8 +15,8 @@ jobs:
           extensions: mbstring, pdo_sqlite, pdo_pgsql, xml, curl, gd, fileinfo
           coverage: none
           tools: composer:v2
+      - run: composer validate --no-check-publish
       - run: composer install --no-interaction --prefer-dist --no-progress
-      # Local-only dotenv file prevents noisy file warnings; secrets stay in env/CI.
       - run: cp .env.example .env
       - run: php artisan test --compact
         env:
@@ -23,6 +24,50 @@ jobs:
           APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
           DB_CONNECTION: sqlite
           DB_DATABASE: ":memory:"
+          INVENTORY_EXPECT_DATABASE_DRIVER: sqlite
           CACHE_STORE: array
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
+
+  phpunit-postgresql16:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_DATABASE: inventory_ci
+      DB_USERNAME: inventory_ci
+      DB_PASSWORD: inventory_ci_only
+      INVENTORY_EXPECT_DATABASE_DRIVER: pgsql
+      BCRYPT_ROUNDS: "4"
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: inventory_ci
+          POSTGRES_USER: inventory_ci
+          POSTGRES_PASSWORD: inventory_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U inventory_ci -d inventory_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, pdo_pgsql, pdo_sqlite, xml, curl, gd, fileinfo
+          coverage: none
+          tools: composer:v2
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: cp .env.example .env
+      - name: Confirm actual database driver before migration and tests
+        run: php artisan test --compact --filter=DatabaseDriverGateTest
+      - name: Run complete Laravel test suite on PostgreSQL 16
+        run: php artisan test --compact
