@@ -24,8 +24,52 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\AssetFieldController;
 use App\Http\Controllers\Api\CompanyConfigurationController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\Commercial\PublicController as InventoryPublicCommercial;
+use App\Http\Controllers\Api\Commercial\AdminController as InventoryPlatformAdmin;
 
 Route::prefix('v1')->group(function (): void {
+    Route::prefix('commercial')->group(function (): void {
+        Route::get('/plans', [InventoryPublicCommercial::class,'plans']);
+        Route::get('/legal', [InventoryPublicCommercial::class,'legal']);
+        Route::get('/legal/{version}', [InventoryPublicCommercial::class,'legalDocument'])->whereNumber('version');
+        Route::middleware(['auth:sanctum','inventory.active-account'])->group(function (): void {
+            Route::get('/subscription', [InventoryPublicCommercial::class,'subscription']);
+            Route::get('/invoices', [InventoryPublicCommercial::class,'invoices']);
+            Route::get('/invoices/{invoice}/pdf', [InventoryPublicCommercial::class,'invoicePdf'])->whereNumber('invoice');
+            Route::post('/invoices/{invoice}/proof', [InventoryPublicCommercial::class,'proof'])->whereNumber('invoice')->middleware('throttle:5,1,inventory-proof');
+            Route::post('/legal/accept', [InventoryPublicCommercial::class,'accept'])->middleware('throttle:20,1');
+            Route::get('/consents', [InventoryPublicCommercial::class,'consents']);
+        });
+    });
+    Route::prefix('platform-admin')->middleware(['auth:sanctum','inventory.active-account','throttle:120,1'])->group(function (): void {
+        $c = InventoryPlatformAdmin::class;
+        Route::get('/overview',[$c,'overview']);
+        Route::get('/organizations',[$c,'organizations']);
+        Route::get('/organizations/{company}',[$c,'organization'])->whereUuid('company');
+        Route::get('/organizations/{company}/users',[$c,'users'])->whereUuid('company');
+        Route::post('/organizations/{company}/users/{user}/resend',[$c,'resend'])->whereUuid('company')->whereNumber('user');
+        Route::put('/organizations/{company}/subscription',[$c,'assign'])->whereUuid('company');
+        Route::put('/organizations/{company}/billing',[$c,'saveBuyer'])->whereUuid('company');
+        Route::get('/plans',[$c,'plans']); Route::post('/plans',[$c,'savePlan']);
+        Route::put('/plans/{version}/status',[$c,'planState'])->whereNumber('version');
+        Route::get('/billing/supplier',[$c,'billingProfile']);
+        Route::put('/billing/supplier',[$c,'saveSupplier']);
+        Route::post('/billing/assets/{kind}',[$c,'billingAsset']);
+        Route::get('/invoices',[$c,'invoices']); Route::post('/invoices',[$c,'createInvoice']);
+        Route::put('/invoices/{invoice}/status',[$c,'invoiceState'])->whereNumber('invoice');
+        Route::get('/invoices/{invoice}/pdf',[$c,'invoicePdf'])->whereNumber('invoice');
+        Route::get('/invoices/{invoice}/proofs',[$c,'proofs'])->whereNumber('invoice');
+        Route::get('/proofs/{proof}/file',[$c,'proofFile'])->whereNumber('proof');
+        Route::put('/proofs/{proof}/review',[$c,'reviewProof'])->whereNumber('proof');
+        Route::get('/legal',[$c,'legalVersions']);
+        Route::get('/legal/{version}',[$c,'legalVersion'])->whereNumber('version');
+        Route::post('/legal',[$c,'saveLegal']);
+        Route::put('/legal/{version}/status',[$c,'legalState'])->whereNumber('version');
+        Route::get('/legal/{version}/pdf',[$c,'legalPdf'])->whereNumber('version');
+        Route::get('/consents',[$c,'consents']);
+        Route::get('/grants',[$c,'grants']); Route::post('/grants',[$c,'grant']);
+        Route::delete('/grants/{grant}',[$c,'revoke'])->whereNumber('grant');
+    });
     Route::get('/health', fn () => response()->json([
         'status' => 'ok',
         'service' => 'itp-inventory-api',
@@ -59,7 +103,7 @@ Route::prefix('v1')->group(function (): void {
             ])
         ));
 
-        Route::prefix('companies/{company}')->group(function (): void {
+        Route::prefix('companies/{company}')->middleware('inventory.entitlement')->group(function (): void {
             Route::get('/preferences/{view}', [TablePreferenceController::class, 'show']);
             Route::put('/preferences/{view}', [TablePreferenceController::class, 'update']);
             Route::delete('/preferences/{view}', [TablePreferenceController::class, 'destroy']);

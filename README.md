@@ -8,7 +8,7 @@
 
 Многокомпанейский реестр активов и история изменений, дерево объектов/этажей/помещений, интерактивные планы, МОЛ, перемещения, QR, складские операции, инвентаризации и пересчет, списание, отчеты/печать/XLSX, справочники (включая единицы, производители и модели), динамические поля, шаблоны документов, роли, профиль и аудит.
 
-Код: Laravel 12 + PHP 8.4 для текущего Windows runtime; отдельная PostgreSQL БД production, SQLite для локальных тестов. API /inventory-api/api/v1; frontend /inventory/. Авторизация login/logout и CSRF в /inventory-api/auth/*, никакой публичной регистрации. Внешние интеграции отключены по умолчанию.
+Код: Laravel 12 + PHP 8.4 для текущего Windows runtime; отдельная PostgreSQL БД production, SQLite для локальных тестов. API /inventory-api/api/v1; frontend /inventory/. Авторизация login/logout и CSRF в /inventory-api/auth/*; публичная регистрация с подтверждением e-mail реализована, но отключена до отдельной приемки (см. docs/commercial/README.md). Внешние интеграции отключены по умолчанию.
 
 ## Старт новой команды
 
@@ -18,6 +18,7 @@
 3. **docs/CONFIGURATION.md** — env-параметры без секретных значений.
 4. **docs/DEPLOYMENT.md** — запуск QA/Windows/PG, release, rollback, backup gate.
 5. **docs/OPERATIONS.md** — здоровье, ошибки, инциденты, поддержка.
+5a. **docs/PERFORMANCE-AND-RESTORE-20261104.md** — подтвержденные PostgreSQL 16 backup/restore и нагрузочные испытания 10k.
 6. **docs/TESTING.md** — модульные, сценарные, авторизованные и PostgreSQL тесты.
 7. docs/API.md, docs/STOCKTAKES.md, docs/ASSET_DISPOSAL.md, docs/FACILITIES_AND_WAREHOUSES.md, docs/FLOORPLANS.md — подробные предметные контракты.
 

@@ -3,6 +3,7 @@
 use App\Http\Middleware\ApiErrorCode;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureBrowserLoginEnabled;
+use App\Http\Middleware\EnsureCommercialEntitlement;
 use App\Http\Middleware\IsolatedXsrfCookie;
 use App\Http\Middleware\RequestCorrelationId;
 use App\Http\Middleware\VerifyInventoryIntegrationKey;
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'inventory.browser-login' => EnsureBrowserLoginEnabled::class,
             'inventory.active-account' => EnsureActiveAccount::class,
             'inventory.integration' => VerifyInventoryIntegrationKey::class,
+            'inventory.entitlement' => EnsureCommercialEntitlement::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
