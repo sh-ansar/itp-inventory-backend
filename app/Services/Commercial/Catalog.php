@@ -19,6 +19,10 @@ final class Catalog
             'names.en' => 'required|string|max:120',
             'names.ge' => 'required|string|max:120',
             'description' => 'nullable|string|max:4000',
+            'descriptions' => 'nullable|array:ru,en,ge',
+            'descriptions.ru' => 'nullable|string|max:4000',
+            'descriptions.en' => 'nullable|string|max:4000',
+            'descriptions.ge' => 'nullable|string|max:4000',
             'price_minor' => 'required|integer|min:0|max:100000000000',
             'currency' => ['required',Rule::in(['KZT','GEL','USD','EUR'])],
             'period_months' => 'required|integer|min:1|max:120',
@@ -42,6 +46,10 @@ final class Catalog
             $version = 1 + (int) DB::table('inventory_plan_versions')->where('plan_id', $plan->id)->max('version');
             $terms = [
                 'names' => $d['names'], 'description' => $d['description'] ?? '',
+                'descriptions' => $d['descriptions'] ?? [
+                    'ru'=>$d['description'] ?? '', 'en'=>$d['description'] ?? '',
+                    'ge'=>$d['description'] ?? '',
+                ],
                 'price_minor' => (int)$d['price_minor'], 'currency' => $d['currency'],
                 'period_months' => (int)$d['period_months'], 'limits' => $d['limits'],
                 'modules' => $d['modules'],

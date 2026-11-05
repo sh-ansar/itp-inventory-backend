@@ -26,10 +26,12 @@ use App\Http\Controllers\Api\CompanyConfigurationController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Commercial\PublicController as InventoryPublicCommercial;
 use App\Http\Controllers\Api\Commercial\AdminController as InventoryPlatformAdmin;
+use App\Http\Controllers\Api\Commercial\SiteContentController as InventorySiteContent;
 
 Route::prefix('v1')->group(function (): void {
     Route::prefix('commercial')->group(function (): void {
         Route::get('/plans', [InventoryPublicCommercial::class,'plans']);
+        Route::get('/site-content', [InventorySiteContent::class,'publicContent'])->middleware('throttle:120,1');
         Route::get('/legal', [InventoryPublicCommercial::class,'legal']);
         Route::get('/legal/{version}', [InventoryPublicCommercial::class,'legalDocument'])->whereNumber('version');
         Route::middleware(['auth:sanctum','inventory.active-account'])->group(function (): void {
@@ -44,6 +46,8 @@ Route::prefix('v1')->group(function (): void {
     Route::prefix('platform-admin')->middleware(['auth:sanctum','inventory.active-account','throttle:120,1'])->group(function (): void {
         $c = InventoryPlatformAdmin::class;
         Route::get('/overview',[$c,'overview']);
+        Route::get('/site-content',[InventorySiteContent::class,'show']);
+        Route::put('/site-content',[InventorySiteContent::class,'save'])->middleware('throttle:20,1');
         Route::get('/organizations',[$c,'organizations']);
         Route::get('/organizations/{company}',[$c,'organization'])->whereUuid('company');
         Route::get('/organizations/{company}/users',[$c,'users'])->whereUuid('company');

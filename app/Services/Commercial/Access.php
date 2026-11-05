@@ -11,7 +11,7 @@ final class Access
     public const PERMISSIONS = [
         'platform.manage', 'companies.read', 'users.write',
         'plans.read', 'plans.write', 'subscriptions.write',
-        'billing.read', 'billing.write', 'legal.read',
+        'billing.read', 'billing.write', 'site.read', 'site.write', 'legal.read',
         'legal.write', 'legal.approve', 'legal.publish',
     ];
 
